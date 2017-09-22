@@ -36,6 +36,7 @@ public class Worker {
 
         for (int i = 0; i < args.numWorkers; i++) {
             final Channel channel = connection.createChannel();
+            channel.basicQos(2);
             channel.queueDeclare(args.queue, true, false, false, null);
             RabbitBackend backend = new RabbitBackend(channel);
             RabbitMessageConsumer consumer = new RabbitMessageConsumer(channel, backend);

@@ -1,5 +1,6 @@
 package org.sedlakovi.celery;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
@@ -21,7 +22,127 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-/**
- * Created by krab on 10.9.17.
- */
 
+class RabbitMessageConsumer extends DefaultConsumer {
+
+    private final ObjectMapper jsonMapper;
+    private final Lock taskRunning = new ReentrantLock();
+    private final RabbitBackend backend;
+
+    private static final Logger LOG = Logger.getLogger(RabbitMessageConsumer.class.getName());
+
+    RabbitMessageConsumer(Channel channel, RabbitBackend backend) {
+        super(channel);
+        this.backend = backend;
+        jsonMapper = new ObjectMapper();
+    }
+
+    @Override
+    public void handleDelivery(String consumerTag, Envelope envelope,
+                               AMQP.BasicProperties properties, byte[] body)
+            throws IOException {
+        taskRunning.lock();
+        String taskId = properties.getHeaders().get("id").toString();
+        try {
+            Stopwatch stopwatch = Stopwatch.createStarted();
+            String message = new String(body, properties.getContentEncoding());
+
+            // Most time spent here. Up to 40 ms.
+            List<?> payload = jsonMapper.readValue(message, List.class);
+
+            String taskClassName = properties.getHeaders().get("task").toString();
+            Optional<Object> result = processTask(
+                    taskClassName,
+                    (List<?>) payload.get(0));
+
+            LOG.info(String.format("Task %s succeeded in %s. Result was: %s", taskId, stopwatch, result));
+
+            if (result.isPresent()) {
+                backend.reportResult(taskId, result.get());
+            }
+
+            getChannel().basicAck(envelope.getDeliveryTag(), false);
+        } catch (DispatchException e) {
+            LOG.log(Level.SEVERE, String.format("Task %s dispatch error", taskId), e.getCause());
+            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+        } catch (InvocationTargetException e) {
+            LOG.log(Level.WARNING, String.format("Task %s error", taskId), e.getCause());
+            backend.reportException(e.getCause());
+            getChannel().basicAck(envelope.getDeliveryTag(), false);
+        } catch (JsonProcessingException e) {
+            LOG.log(Level.SEVERE, String.format("Task %s - %s", taskId, e), e.getCause());
+            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+        } catch (RuntimeException e) {
+            LOG.log(Level.SEVERE, String.format("Task %s - %s", taskId, e), e);
+            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+        } finally {
+            taskRunning.unlock();
+        }
+    }
+
+    private Optional<Object> processTask(String taskClassName, List<?> args)
+            throws DispatchException, InvocationTargetException {
+
+        Task task = TaskRegistry.getTask(taskClassName);
+
+        if (task == null) {
+            throw new DispatchException(String.format("Task %s not registered.", taskClassName));
+        }
+
+        List<Class<?>> argTypes = args.stream()
+                .map(Object::getClass)
+                .collect(Collectors.toList());
+
+        Optional<Method> maybeMethod = findRunMethod(task.getClass(), argTypes);
+
+        if (!maybeMethod.isPresent()) {
+            throw new DispatchException(String.format("Method run(%s) not present in %s",
+                    Joiner.on(",").join(argTypes), taskClassName));
+        }
+        Method method = maybeMethod.get();
+
+        Object result;
+        try {
+            result = method.invoke(task, args.toArray());
+        } catch (IllegalAccessException e) {
+            throw new DispatchException(String.format("Error calling %s", method), e);
+        } catch (IllegalArgumentException e) {
+            // should not happen because of findRunMethod
+            throw new AssertionError(String.format("Error calling %s", method), e);
+        }
+
+        if (method.getReturnType().equals(void.class)) {
+            assert result == null;
+            return Optional.empty();
+        } else {
+            return Optional.of(result);
+        }
+    }
+
+    void close() throws IOException {
+        getChannel().abort();
+        backend.close();
+    }
+
+    void join() {
+        taskRunning.lock();
+    }
+
+    private static Optional<Method> findRunMethod(Class<?> cls, List<Class<?>> args) {
+        return Arrays.stream(cls.getDeclaredMethods())
+                .filter((m) -> m.getName().equals("run"))
+                .filter((m) -> {
+                    Class<?>[] parameterTypes = m.getParameterTypes();
+                    if (parameterTypes.length != args.size()) {
+                        return false;
+                    }
+
+                    for (int i = 0; i < args.size(); i++) {
+                        if (!Primitives.wrap(parameterTypes[i]).isAssignableFrom(args.get(i))) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }).findAny();
+    }
+}

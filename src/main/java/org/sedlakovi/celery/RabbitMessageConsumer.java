@@ -55,19 +55,21 @@ class RabbitMessageConsumer extends DefaultConsumer {
                     taskClassName,
                     (List<?>) payload.get(0));
 
-            LOG.info(String.format("Task %s succeeded in %s. Result was: %s", taskId, stopwatch, result));
+            LOG.info(String.format("Task %s[%s] succeeded in %s. Result was: %s",
+                    taskClassName, taskId, stopwatch, result));
 
             if (result.isPresent()) {
-                backend.reportResult(taskId, result.get());
+                backend.reportResult(taskId, properties.getReplyTo(), properties.getCorrelationId(), result.get());
             }
 
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (DispatchException e) {
             LOG.log(Level.SEVERE, String.format("Task %s dispatch error", taskId), e.getCause());
-            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+            backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(), e);
+            getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (InvocationTargetException e) {
             LOG.log(Level.WARNING, String.format("Task %s error", taskId), e.getCause());
-            backend.reportException(e.getCause());
+            backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(), e.getCause());
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (JsonProcessingException e) {
             LOG.log(Level.SEVERE, String.format("Task %s - %s", taskId, e), e.getCause());

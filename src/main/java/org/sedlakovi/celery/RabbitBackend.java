@@ -7,11 +7,11 @@ import com.rabbitmq.client.Channel;
 
 import java.io.IOException;
 
-class RabbitBackend {
+public class RabbitBackend {
     private final Channel channel;
     private final ObjectMapper jsonMapper;
 
-    RabbitBackend(Channel channel) {
+    public RabbitBackend(Channel channel) {
         this.channel = channel;
         jsonMapper = new ObjectMapper();
     }

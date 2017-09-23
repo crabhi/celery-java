@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class RabbitResultConsumer extends DefaultConsumer {
+class RabbitResultConsumer extends DefaultConsumer {
 
     private final Cache<String, SettableFuture<Object>> tasks = CacheBuilder.newBuilder().build();
     private final ObjectMapper jsonMapper = new ObjectMapper();

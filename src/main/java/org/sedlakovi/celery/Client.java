@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Joiner;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -15,7 +13,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class Client {
@@ -88,22 +85,4 @@ public class Client {
 
         return resultConsumer.getResult(taskId);
     }
-
-    public static void main(String[] args) throws Exception {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        Connection connection = factory.newConnection(Executors.newCachedThreadPool());
-
-        RabbitBackend backend = new RabbitBackend(connection.createChannel());
-        Client client = new Client(connection.createChannel(), backend);
-
-        try {
-            System.out.println(client.submit(TestTask.class, 1, 2).get());
-            System.out.println(client.submit(TestVoidTask.class, 1, 2).get());
-            System.out.println(client.submit(TestTask.class, "a", "b").get());
-        } finally {
-            connection.close();
-        }
-    }
-
 }

@@ -86,7 +86,7 @@ Connection connection = factory.newConnection(Executors.newCachedThreadPool());
 RabbitBackend backend = new RabbitBackend(connection.createChannel());
 Client client = new Client(connection.createChannel(), backend);
 
-System.out.println(client.submit("tasks.add", 1, 2));
+System.out.println(client.submit("tasks.add", 1, 2).get());
 ```
 
 ## Example code Java - RabbitMQ - Java

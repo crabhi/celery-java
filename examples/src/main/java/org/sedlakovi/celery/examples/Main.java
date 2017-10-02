@@ -1,15 +1,14 @@
 package org.sedlakovi.celery.examples;
 
+import com.google.common.base.Stopwatch;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import org.sedlakovi.celery.Client;
 import org.sedlakovi.celery.RabbitBackend;
+import org.sedlakovi.celery.Worker;
 
 import java.util.concurrent.Executors;
 
-/**
- * Created by krab on 23.9.17.
- */
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -17,15 +16,28 @@ public class Main {
         factory.setHost("localhost");
         Connection connection = factory.newConnection(Executors.newCachedThreadPool());
 
+        Worker worker = Worker.create("celery", connection);
+
         RabbitBackend backend = new RabbitBackend(connection.createChannel());
         Client client = new Client(connection.createChannel(), backend);
 
         try {
-            System.out.println(client.submit(TestTask.class, "run", 1, 2).get());
-            System.out.println(client.submit(TestVoidTask.class, "run", 1, 2).get());
-            System.out.println(client.submit(TestTask.class, "run", "a", "b").get());
+            for (int i = 0; i < 20; i++) {
+                Stopwatch sw = Stopwatch.createStarted();
+                Object result = client.submit(TestTask.class, 1, i).get();
+                System.out.printf("Task #%d's result was: %s. The task took %s end-to-end.\n", i, result, sw);
+            }
+
+            System.out.println("Testing result of void task: " + client.submit(TestVoidTask.class, 1, 2).get());
+            System.out.println("Testing task that should fail and throw exception:");
+            client.submit(TestTask.class, "a", "b").get();
         } finally {
             connection.close();
+            worker.close();
+            worker.join();
         }
+
+        // The worker threads hang waiting for the messages for some reason for quite a long time but eventually,
+        // the process finishes.
     }
 }

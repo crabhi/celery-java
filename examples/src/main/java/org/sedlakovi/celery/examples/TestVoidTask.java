@@ -7,6 +7,6 @@ import org.sedlakovi.celery.Task;
 public class TestVoidTask implements Task {
 
     public void run(int x, int y) {
-        System.out.println(x + y);
+        System.out.println("I'm the task that just prints: " + (x + y));
     }
 }

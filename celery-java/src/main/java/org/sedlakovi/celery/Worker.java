@@ -117,6 +117,7 @@ public class Worker extends DefaultConsumer {
 
     public void join() {
         taskRunning.lock();
+        taskRunning.unlock();
     }
 
     private static Optional<java.lang.reflect.Method> findRunMethod(Class<?> cls, List<Class<?>> args) {
@@ -146,6 +147,26 @@ public class Worker extends DefaultConsumer {
         private int numWorkers = 2;
     }
 
+    public static final Worker create(String queue, Connection connection) throws IOException {
+        final Channel channel = connection.createChannel();
+        channel.basicQos(2);
+        channel.queueDeclare(queue, true, false, false, null);
+        RabbitBackend backend = new RabbitBackend(channel);
+        final Worker consumer = new Worker(channel, backend);
+        channel.basicConsume(queue, false, "", true, false, null, consumer);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                consumer.close();
+                consumer.join();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
+
+        return consumer;
+    }
+
     public static void main(String[] argv) throws Exception {
         Args args = new Args();
         JCommander.newBuilder()
@@ -160,25 +181,8 @@ public class Worker extends DefaultConsumer {
         final List<Worker> consumers = new ArrayList<>();
 
         for (int i = 0; i < args.numWorkers; i++) {
-            final Channel channel = connection.createChannel();
-            channel.basicQos(2);
-            channel.queueDeclare(args.queue, true, false, false, null);
-            RabbitBackend backend = new RabbitBackend(channel);
-            Worker consumer = new Worker(channel, backend);
-            channel.basicConsume(args.queue, false, "", true, false, null, consumer);
-            consumers.add(consumer);
+            consumers.add(create(args.queue, connection));
         }
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            for (Worker consumer : consumers) {
-                try {
-                    consumer.close();
-                    consumer.join();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }));
 
         System.out.println(String.format("Started consuming tasks from queue %s.", args.queue));
         System.out.println("Known tasks:");

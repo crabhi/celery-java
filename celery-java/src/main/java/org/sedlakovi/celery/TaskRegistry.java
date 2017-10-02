@@ -8,7 +8,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Function;
 
-
+/**
+ * Loads registered {@link Task} services and provides them by their class name.
+ */
 class TaskRegistry {
 
     private static final Map<String, Task> TASKS = Streams

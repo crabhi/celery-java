@@ -7,6 +7,15 @@ import com.rabbitmq.client.Channel;
 
 import java.io.IOException;
 
+/**
+ * <p>
+ *     Backend, in Celery terminology, is a way to deliver task results back to the client.
+ * </p>
+ * <p>
+ *     This one sends the tasks to RabbitMQ routing key specified by the reply-to property. The client should register
+ *     a temporary queue with its UUID so the overhead of creating a queue happens once per client.
+ * </p>
+ */
 public class RabbitBackend {
     private final Channel channel;
     private final ObjectMapper jsonMapper;

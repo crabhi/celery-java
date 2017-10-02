@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Future;
 
+/**
+ * A client allowing you to submit a task and get a {@link Future} describing the result.
+ */
 public class Client {
     private final Channel channel;
     private final String queue;

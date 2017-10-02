@@ -12,7 +12,6 @@ import com.rabbitmq.client.*;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +22,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Worker that listens on RabbitMQ queue and executes tasks. You can either embed it into your project via
+ * {@link #create(String, Connection)} or start it stand-alone and supply your tasks on classpath like this:
+ *
+ * <pre>
+ * java -cp celery-java-xyz.jar:your-tasks.jar org.sedlakovi.celery.Worker --concurrency 8
+ * </pre>
+ */
 public class Worker extends DefaultConsumer {
 
     private final ObjectMapper jsonMapper;
@@ -147,7 +154,7 @@ public class Worker extends DefaultConsumer {
         private int numWorkers = 2;
     }
 
-    public static final Worker create(String queue, Connection connection) throws IOException {
+    public static Worker create(String queue, Connection connection) throws IOException {
         final Channel channel = connection.createChannel();
         channel.basicQos(2);
         channel.queueDeclare(queue, true, false, false, null);
@@ -178,10 +185,8 @@ public class Worker extends DefaultConsumer {
         factory.setHost("localhost");
         Connection connection = factory.newConnection(Executors.newCachedThreadPool());
 
-        final List<Worker> consumers = new ArrayList<>();
-
         for (int i = 0; i < args.numWorkers; i++) {
-            consumers.add(create(args.queue, connection));
+            create(args.queue, connection);
         }
 
         System.out.println(String.format("Started consuming tasks from queue %s.", args.queue));

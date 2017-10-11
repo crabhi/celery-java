@@ -1,12 +1,11 @@
 package org.sedlakovi.celery.examples;
 
-import org.kohsuke.MetaInfServices;
 import org.sedlakovi.celery.Task;
 
-@MetaInfServices
-public class TestTask implements Task {
+@Task
+public class TestTask {
 
-    public int run(int x, int y) {
+    public int sum(int x, int y) {
         return x + y;
     }
 }

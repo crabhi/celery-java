@@ -24,13 +24,13 @@ public class Main {
         try {
             for (int i = 0; i < 20; i++) {
                 Stopwatch sw = Stopwatch.createStarted();
-                Object result = client.submit(TestTask.class, 1, i).get();
+                Object result = TestTaskProxy.with(client).sum(1, i).get();
                 System.out.printf("Task #%d's result was: %s. The task took %s end-to-end.\n", i, result, sw);
             }
 
-            System.out.println("Testing result of void task: " + client.submit(TestVoidTask.class, 1, 2).get());
+            System.out.println("Testing result of void task: " + TestVoidTaskProxy.with(client).run(1, 2).get());
             System.out.println("Testing task that should fail and throw exception:");
-            client.submit(TestTask.class, "a", "b").get();
+            client.submit(TestTask.class, "sum", new Object[]{"a", "b"}).get();
         } finally {
             connection.close();
             worker.close();

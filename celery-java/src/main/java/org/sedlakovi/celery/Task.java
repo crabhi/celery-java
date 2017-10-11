@@ -1,5 +1,7 @@
 package org.sedlakovi.celery;
 
+import java.lang.annotation.*;
+
 /**
  * Marker interface for the Celery Task.
  * <p>
@@ -12,5 +14,7 @@ package org.sedlakovi.celery;
  * An easy way to do it is to annotate your Task implementation with {@code org.kohsuke.MetaInfServices} annotation. See
  * example tasks in the examples module.
  */
-public interface Task {
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.TYPE)
+public @interface Task {
 }

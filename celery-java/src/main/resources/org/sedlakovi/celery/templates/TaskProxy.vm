@@ -1,0 +1,38 @@
+package ${packageName};
+
+import java.util.concurrent.Future;
+import org.sedlakovi.celery.Client;
+
+public final class ${taskName}Proxy {
+
+    private final Client client;
+
+    private ${taskName}Proxy(Client client) {
+        this.client = client;
+    }
+
+    public static ${packageName}.${taskName}Proxy with(Client client) {
+        return new ${packageName}.${taskName}Proxy(client);
+    }
+
+#foreach($method in $methods)
+    @SuppressWarnings("unchecked")
+    public Future<${method.returnType}> ${method.simpleName}(
+    #foreach($param in $method.parameters)
+            ${param.type} ${param.simpleName}#if( $foreach.hasNext ),#end
+
+    #end
+        ) throws java.io.IOException {
+
+        return (Future<${method.returnType}>) client.submit(
+                ${packageName}.${taskName}.class,
+                "${method.simpleName}",
+                new Object[]{
+                    #foreach($param in $method.parameters)
+                        ${param.simpleName}#if( $foreach.hasNext ),#end
+
+                    #end
+                });
+    }
+#end
+}

@@ -4,14 +4,26 @@ package org.sedlakovi.celery;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Joiner;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.MoreCollectors;
+import com.google.common.collect.Streams;
 import com.google.common.primitives.Primitives;
-import com.rabbitmq.client.*;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -54,12 +66,13 @@ public class Worker extends DefaultConsumer {
             Stopwatch stopwatch = Stopwatch.createStarted();
             String message = new String(body, properties.getContentEncoding());
 
-            List<?> payload = jsonMapper.readValue(message, List.class);
+            JsonNode payload = jsonMapper.readTree(message);
 
             String taskClassName = properties.getHeaders().get("task").toString();
             Object result = processTask(
                     taskClassName,
-                    (List<?>) payload.get(0));
+                    (ArrayNode) payload.get(0),
+                    (ObjectNode) payload.get(1));
 
             LOG.info(String.format("Task %s[%s] succeeded in %s. Result was: %s",
                     taskClassName, taskId, stopwatch, result));
@@ -86,29 +99,30 @@ public class Worker extends DefaultConsumer {
         }
     }
 
-    private Object processTask(String taskClassName, List<?> args)
+    private Object processTask(String taskName, ArrayNode args, ObjectNode kwargs)
             throws DispatchException, InvocationTargetException {
 
-        Task task = TaskRegistry.getTask(taskClassName);
+        List<String> name = ImmutableList.copyOf(Splitter.on("#").split(taskName).iterator());
+
+        assert name.size() == 2;
+
+        Object task = TaskRegistry.getTask(name.get(0));
 
         if (task == null) {
-            throw new DispatchException(String.format("Task %s not registered.", taskClassName));
+            throw new DispatchException(String.format("Task %s not registered.", taskName));
         }
 
-        List<Class<?>> argTypes = args.stream()
-                .map(Object::getClass)
-                .collect(Collectors.toList());
+        Method method = Arrays.stream(task.getClass().getDeclaredMethods())
+                .filter((m) -> m.getName().equals(name.get(1)))
+                .collect(MoreCollectors.onlyElement());
 
-        Optional<java.lang.reflect.Method> maybeMethod = findRunMethod(task.getClass(), argTypes);
-
-        if (!maybeMethod.isPresent()) {
-            throw new DispatchException(String.format("Method run(%s) not present in %s",
-                    Joiner.on(",").join(argTypes), taskClassName));
-        }
-        java.lang.reflect.Method method = maybeMethod.get();
+        List<?> convertedArgs = Streams.mapWithIndex(
+                Arrays.stream(method.getParameterTypes()),
+                              (paramType, i) -> jsonMapper.convertValue(args.get((int) i), paramType)
+        ).collect(Collectors.toList());
 
         try {
-            return method.invoke(task, args.toArray());
+            return method.invoke(task, convertedArgs.toArray());
         } catch (IllegalAccessException e) {
             throw new DispatchException(String.format("Error calling %s", method), e);
         } catch (IllegalArgumentException e) {

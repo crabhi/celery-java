@@ -1,10 +1,9 @@
 package org.sedlakovi.celery.examples;
 
-import org.kohsuke.MetaInfServices;
 import org.sedlakovi.celery.Task;
 
-@MetaInfServices
-public class TestVoidTask implements Task {
+@Task
+public class TestVoidTask {
 
     public void run(int x, int y) {
         System.out.println("I'm the task that just prints: " + (x + y));

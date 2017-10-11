@@ -13,15 +13,16 @@ import java.util.function.Function;
  */
 class TaskRegistry {
 
-    private static final Map<String, Task> TASKS = Streams
-            .stream(ServiceLoader.load(Task.class))
+    private static final Map<String, Object> TASKS = Streams
+            .stream(ServiceLoader.load(TaskLoader.class))
+            .map((loader) -> loader.loadTask())
             .collect(ImmutableMap.toImmutableMap((v) -> v.getClass().getName(), Function.identity()));
 
     static Set<String> getRegisteredTaskNames() {
         return TASKS.keySet();
     }
 
-    static Task getTask(String taskName) {
+    static Object getTask(String taskName) {
         return TASKS.get(taskName);
     }
 }

@@ -18,9 +18,12 @@ What's missing:
     - chords
     - groups
     - chains
-- published Javadoc
 
 Patches providing any of these are welcome.
+
+## Javadoc
+
+Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](http://crabhi.github.io/celery-java/apidocs/).
 
 ## Calling a Java task from Python
 

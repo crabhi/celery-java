@@ -1,7 +1,9 @@
 package org.sedlakovi.celery;
 
 /**
- * Marker interface automatically added to proxy classes created by the {@link Task} annotation.
+ * Service (instantiated by {@link java.util.ServiceLoader}) instantiating a {@link Task} within {@link Worker}.
+ * <p>
+ * Such loader is generated automatically when processing the {@link Task} annotation.
  */
 public interface TaskLoader {
     Object loadTask();

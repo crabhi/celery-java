@@ -25,6 +25,7 @@ Patches providing any of these are welcome.
 ## Calling a Java task from Python
 
 1. Annotate your class that does something useful as a `@Task`.
+
 ```java
 import org.sedlakovi.celery.Task;
 
@@ -36,8 +37,10 @@ public class TestTask {
     }
 }
 ```
+
 2. Run `Worker` with your tasks on classpath. You can directly use the `Worker` class or embed it into your `main` 
 function.
+
 ```java
 import org.sedlakovi.celery.Worker;
 

@@ -3,10 +3,10 @@ package org.sedlakovi.celery;
 import java.lang.annotation.*;
 
 /**
- * Marker interface for the Celery Task.
+ * Marks your code as a Celery Task.
  * <p>
- * It must have a method named {@code run} with the parameters of the called task. If such method is not found,
- * a {@link DispatchException} is thrown at runtime and reported back to the client.
+ * The annotation processor included in this package then generates two classes - {@code *Proxy} and {@code *Loader}.
+ * The loader is
  * <p>
  * All parameters and return types must be JSON-serializable.
  * <p>

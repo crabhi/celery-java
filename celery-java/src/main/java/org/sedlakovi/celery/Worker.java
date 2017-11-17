@@ -166,6 +166,9 @@ public class Worker extends DefaultConsumer {
 
         @Parameter(names = "--concurrency", description = "Number of concurrent tasks to process")
         private int numWorkers = 2;
+
+        @Parameter(names = "--broker", description = "Broker URL, e. g. amqp://localhost//")
+        private String broker = "amqp://localhost//";
     }
 
     public static Worker create(String queue, Connection connection) throws IOException {
@@ -196,7 +199,7 @@ public class Worker extends DefaultConsumer {
                 .parse(argv);
 
         ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
+        factory.setUri(args.broker);
         Connection connection = factory.newConnection(Executors.newCachedThreadPool());
 
         for (int i = 0; i < args.numWorkers; i++) {

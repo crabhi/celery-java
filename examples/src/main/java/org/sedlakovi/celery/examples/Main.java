@@ -24,7 +24,7 @@ public class Main {
         try {
             for (int i = 0; i < 20; i++) {
                 Stopwatch sw = Stopwatch.createStarted();
-                Object result = TestTaskProxy.with(client).sum(1, i).get();
+                Integer result = TestTaskProxy.with(client).sum(1, i).get();
                 System.out.printf("Task #%d's result was: %s. The task took %s end-to-end.\n", i, result, sw);
             }
 

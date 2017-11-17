@@ -33,7 +33,7 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/crabhi/celery-java</url>
+        <url>https://github.com/crabhi/celery-java.git</url>
     </scm>
 
     <build>

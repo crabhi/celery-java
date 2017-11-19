@@ -21,7 +21,7 @@ What's missing:
 
 Patches providing any of these are welcome.
 
-## Maven dependecy
+## Maven dependency
 
 Releases are available from Maven Central.
 

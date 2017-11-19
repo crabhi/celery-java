@@ -85,9 +85,9 @@ System.out.println(client.submit("tasks.add", 1, 2).get());
 
 ## Calling Java task from Java
 
-The `@Task` annotation on a class `X` causes `XProxy` and `XLoader` to be generated. `XLoader` registers the task into 
-the worker and `XProxy` has all the task methods tweaked so they now return a `Future<...>` instead of the original
-type.
+The `@Task` annotation on a class `MyClass` causes `MyClassProxy` and `MyClassLoader` to be generated. 
+`MyClassLoader` registers the task into the worker and `MyClassProxy` has all the task methods tweaked so they 
+now return a `Future<...>` instead of the original type.
 
 To use the proxy, you need a Celery `Client`.
 

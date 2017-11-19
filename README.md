@@ -29,46 +29,46 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 
 1. Annotate your class that does something useful as a `@Task`.
 
-```java
-import org.sedlakovi.celery.Task;
-
-@Task
-public class TestTask {
-
-    public int sum(int x, int y) {
-        return x + y;
+    ```java
+    import org.sedlakovi.celery.Task;
+    
+    @Task
+    public class TestTask {
+    
+        public int sum(int x, int y) {
+            return x + y;
+        }
     }
-}
-```
+    ```
 
 2. Run `Worker` with your tasks on classpath. You can directly use the `Worker` class or embed it into your `main` 
 function.
 
-```java
-import org.sedlakovi.celery.Worker;
-
-public class MyWorker {
-    public static void main(String[] args) throws Exception {
-        Worker.main(args);
+    ```java
+    import org.sedlakovi.celery.Worker;
+    
+    public class MyWorker {
+        public static void main(String[] args) throws Exception {
+            Worker.main(args);
+        }
     }
-}
-```
+    ```
 
 3. From the Python side, call the task by the class name hash (`#`) method name.
 
-```
-In [1]: import celery
-
-In [2]: app = celery.Celery(broker="amqp://localhost/", backend="rpc://localhost")
-
-In [3]: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
-Out[3]: 3
-
-In [4]: %%timeit
-   ...: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
-   ...: 
-2.1 ms ± 170 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
-```
+    ```python
+    In [1]: import celery
+    
+    In [2]: app = celery.Celery(broker="amqp://localhost/", backend="rpc://localhost")
+    
+    In [3]: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
+    Out[3]: 3
+    
+    In [4]: %%timeit
+       ...: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
+       ...: 
+    2.1 ms ± 170 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+    ```
 
 ## Calling Python task from Java
 

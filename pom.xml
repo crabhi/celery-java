@@ -129,4 +129,15 @@
         </repository>
     </distributionManagement>
 
+    <developers>
+        <developer>
+            <id>sedlakf</id>
+            <email>filip@sedlakovi.org</email>
+            <url>http://www.sedlakovi.org/</url>
+            <timezone>Europe/Prague</timezone>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
 </project>

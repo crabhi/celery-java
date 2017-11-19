@@ -1,7 +1,13 @@
 # celery-java
-Java implementation of Celery client and worker
+Java implementation of [Celery][celery] client and worker. Quoting from the project website:
 
-The aim is to be compatible with existing Python Celery implementation. That means you should be able
+> Celery is an asynchronous task queue/job queue based on distributed message passing. It is focused on real-time operation, but supports scheduling as well.
+
+>  The execution units, called tasks, are executed concurrently on a single or more worker servers using multiprocessing, Eventlet, or gevent. Tasks can execute asynchronously (in the background) or synchronously (wait until ready).
+
+>  Celery is used in production systems to process millions of tasks a day.
+
+The aim is to be compatible with existing [Python Celery implementation][celery]. That means you should be able
 to run a Java client with a Python worker or vice-versa. Tested with Python Celery 4.1.
 
 At the moment, this is a very alpha version. It can 
@@ -123,3 +129,4 @@ Integer result = TestTaskProxy.with(client).sum(1, 7).get();
 ```
 
 [celery-py-start]: http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html
+[celery]: http://www.celeryproject.org/

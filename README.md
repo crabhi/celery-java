@@ -21,6 +21,31 @@ What's missing:
 
 Patches providing any of these are welcome.
 
+## Maven dependecy
+
+Releases are available from Maven Central.
+
+```xml
+<dependency>
+    <groupId>org.sedlakovi.celery</groupId>
+    <artifactId>celery-java</artifactId>
+    <version>...</version>
+</dependency>
+```
+
+Snapshots are available from [Sonatype OSRH](https://oss.sonatype.org/content/groups/public):
+
+```xml
+<repository>
+    <id>sonatype</id>
+    <url>https://oss.sonatype.org/content/groups/public</url>
+    <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+    </snapshots>
+</repository>
+```
+
 ## Javadoc
 
 Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](http://crabhi.github.io/celery-java/apidocs/).

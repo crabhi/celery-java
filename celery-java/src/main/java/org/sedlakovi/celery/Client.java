@@ -4,73 +4,62 @@ package org.sedlakovi.celery;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Joiner;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import org.sedlakovi.celery.spi.Backend;
+import org.sedlakovi.celery.spi.Broker;
+import org.sedlakovi.celery.spi.Message;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
  * A client allowing you to submit a task and get a {@link Future} describing the result.
  */
 public class Client {
-    private final Channel channel;
-    private final String queue;
     private final String clientId;
     private final String clientName;
     private final ObjectMapper jsonMapper;
-    private final RabbitResultConsumer resultConsumer;
+    private final Broker broker;
+    private final String queue;
+    private final Optional<Backend.ResultsProvider> resultsProvider;
 
-    public Client(Channel channel, RabbitBackend backend, String queue) throws IOException {
-        this.channel = channel;
+    public Client(Broker broker, String queue) throws IOException {
+        this(broker, queue, null);
+    }
+
+    public Client(Broker broker, Backend backend) throws IOException {
+        this(broker, "celery", backend);
+    }
+
+    public Client(Broker broker, String queue, Backend backend) throws IOException {
+        this.broker = broker;
         this.queue = queue;
         this.clientId = UUID.randomUUID().toString();
         this.clientName = clientId + "@" + InetAddress.getLocalHost().getHostName();
         this.jsonMapper = new ObjectMapper();
 
-        this.resultConsumer = backend.createResultConsumer(clientId);
+        if (backend == null) {
+            resultsProvider = Optional.empty();
+        } else {
+            resultsProvider = Optional.of(backend.resultsProviderFor(clientId));
+        }
     }
 
-    public Client(Channel channel, RabbitBackend backend) throws IOException {
-        this(channel, backend, "celery");
+    public Client(Broker broker) throws IOException {
+        this(broker, "celery");
     }
 
-    public Future<?> submit(Class<?> taskClass, String method, Object[] args) throws IOException {
+    public AsyncResult submit(Class<?> taskClass, String method, Object[] args) throws IOException {
         return submit(taskClass.getName() + "#" + method, args);
     }
 
-    public Future<?> submit(String name, Object[] args) throws IOException {
+    public AsyncResult submit(String name, Object[] args) throws IOException {
         String taskId = UUID.randomUUID().toString();
-
-        Map<String, Object> headers = new HashMap<>();
-        headers.put("timelimit", Arrays.asList(null, null));
-        headers.put("task", name);
-        headers.put("retries", 0);
-        headers.put("argsrepr", "(" + Joiner.on(", ").join(args) + ")");
-        headers.put("parent_id", null);
-        headers.put("root_id", taskId);
-        headers.put("id", taskId);
-        headers.put("kwargsrepr", "{}");
-        headers.put("expires", null);
-        headers.put("eta", null);
-        headers.put("lang", "py"); // sic
-        headers.put("group", null);
-        headers.put("origin", clientName);
-
-        AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
-                .replyTo(clientId)
-                .correlationId(taskId)
-                .priority(0)
-                .deliveryMode(2)
-                .headers(headers)
-                .contentEncoding("utf-8")
-                .contentType("application/json")
-                .build();
 
         ArrayNode payload = jsonMapper.createArrayNode();
         ArrayNode argsArr = payload.addArray();
@@ -84,8 +73,52 @@ public class Client {
                 .putNull("chord")
                 .putNull("errbacks");
 
-        channel.basicPublish("", queue, props, jsonMapper.writeValueAsBytes(payload));
+        Message message = broker.newMessage();
+        message.setBody(jsonMapper.writeValueAsBytes(payload));
+        message.setContentEncoding("utf-8");
+        message.setContentType("application/json");
 
-        return resultConsumer.getResult(taskId);
+        Message.Headers headers = message.getHeaders();
+        headers.setId(taskId);
+        headers.setArgsRepr("(" + Joiner.on(", ").join(args) + ")");
+        headers.setOrigin(clientName);
+        if (resultsProvider.isPresent()) {
+            headers.setReplyTo(clientId);
+        }
+
+        message.send(queue);
+
+        Future<?> result;
+        if (resultsProvider.isPresent()) {
+            result = resultsProvider.get().getResult("x");
+        } else {
+            result = CompletableFuture.completedFuture(null);
+        }
+        return new AsyncResultImpl(result);
+    }
+
+    interface AsyncResult {
+        boolean isDone();
+
+        Object get() throws ExecutionException, InterruptedException;
+    }
+
+    private class AsyncResultImpl implements AsyncResult {
+
+        private final Future<?> future;
+
+        AsyncResultImpl(Future<?> future) {
+            this.future = future;
+        }
+
+        @Override
+        public boolean isDone() {
+            return future.isDone();
+        }
+
+        @Override
+        public Object get() throws ExecutionException, InterruptedException {
+            return future.get();
+        }
     }
 }

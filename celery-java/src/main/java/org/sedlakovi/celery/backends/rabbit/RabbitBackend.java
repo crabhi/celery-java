@@ -1,9 +1,11 @@
-package org.sedlakovi.celery;
+package org.sedlakovi.celery.backends.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
+import org.sedlakovi.celery.backends.TaskResult;
+import org.sedlakovi.celery.spi.Backend;
 
 import java.io.IOException;
 
@@ -16,7 +18,23 @@ import java.io.IOException;
  *     a temporary queue with its UUID so the overhead of creating a queue happens once per client.
  * </p>
  */
-public class RabbitBackend {
+public class RabbitBackend implements Backend {
+
+    private final Channel channel;
+
+    public RabbitBackend(Channel channel) {
+        this.channel = channel;
+    }
+
+    @Override
+    public ResultsProvider resultsProviderFor(String clientId) throws IOException {
+        channel.queueDeclare(clientId, false, false, true,
+                ImmutableMap.of("x-expires", 24 * 3600 * 1000));
+        RabbitResultConsumer consumer = new RabbitResultConsumer(channel);
+        channel.basicConsume(clientId, consumer);
+        return consumer;
+    }
+    /*
     private final Channel channel;
     private final ObjectMapper jsonMapper;
 
@@ -74,4 +92,5 @@ public class RabbitBackend {
         channel.basicConsume(clientId, consumer);
         return consumer;
     }
+    */
 }

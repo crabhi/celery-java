@@ -1,27 +1,41 @@
-package org.sedlakovi.celery;
+package org.sedlakovi.celery.backends.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
+import org.sedlakovi.celery.backends.TaskResult;
+import org.sedlakovi.celery.WorkerException;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-class RabbitResultConsumer extends DefaultConsumer {
-
-    private final Cache<String, SettableFuture<Object>> tasks = CacheBuilder.newBuilder().build();
-    private final ObjectMapper jsonMapper = new ObjectMapper();
+class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.ResultsProvider {
 
     public RabbitResultConsumer(Channel channel) {
         super(channel);
     }
+
+    @Override
+    public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+
+    }
+
+    @Override
+    public ListenableFuture<?> getResult(String taskId) {
+        return null;
+    }
+
+    /*
+    private final Cache<String, SettableFuture<Object>> tasks = CacheBuilder.newBuilder().build();
+    private final ObjectMapper jsonMapper = new ObjectMapper();
 
     public Future<?> getResult(String taskId) {
         return getFuture(taskId);
@@ -53,4 +67,5 @@ class RabbitResultConsumer extends DefaultConsumer {
         }
         assert setAccepted;
     }
+    */
 }

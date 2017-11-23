@@ -4,8 +4,9 @@ import com.google.common.base.Stopwatch;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import org.sedlakovi.celery.Client;
-import org.sedlakovi.celery.RabbitBackend;
+import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
 import org.sedlakovi.celery.Worker;
+import org.sedlakovi.celery.brokers.rabbit.RabbitBroker;
 
 import java.util.concurrent.Executors;
 
@@ -19,7 +20,8 @@ public class Main {
         Worker worker = Worker.create("celery", connection);
 
         RabbitBackend backend = new RabbitBackend(connection.createChannel());
-        Client client = new Client(connection.createChannel(), backend);
+        RabbitBroker broker = new RabbitBroker(connection.createChannel());
+        Client client = new Client(broker, backend);
 
         try {
             for (int i = 0; i < 20; i++) {

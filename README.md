@@ -111,7 +111,7 @@ function.
 RabbitBackend backend = new RabbitBackend(rabbitConnection.createChannel());
 Client client = new Client(rabbitConnection.createChannel(), backend);
 
-System.out.println(client.submit("tasks.add", 1, 2).get());
+System.out.println(client.submit("tasks.add", new Object[]{1, 2}).get());
 ```
 
 ## Calling Java task from Java

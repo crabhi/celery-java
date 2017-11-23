@@ -20,6 +20,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
+import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -60,7 +61,7 @@ public class Worker extends DefaultConsumer {
     public void handleDelivery(String consumerTag, Envelope envelope,
                                AMQP.BasicProperties properties, byte[] body)
             throws IOException {
-        taskRunning.lock();
+/*        taskRunning.lock();
         String taskId = properties.getHeaders().get("id").toString();
         try {
             Stopwatch stopwatch = Stopwatch.createStarted();
@@ -97,6 +98,7 @@ public class Worker extends DefaultConsumer {
         } finally {
             taskRunning.unlock();
         }
+        */
     }
 
     private Object processTask(String taskName, ArrayNode args, ObjectNode kwargs)
@@ -132,8 +134,10 @@ public class Worker extends DefaultConsumer {
     }
 
     public void close() throws IOException {
+        /*
         getChannel().abort();
         backend.close();
+        */
     }
 
     public void join() {
@@ -172,6 +176,7 @@ public class Worker extends DefaultConsumer {
     }
 
     public static Worker create(String queue, Connection connection) throws IOException {
+        /*
         final Channel channel = connection.createChannel();
         channel.basicQos(2);
         channel.queueDeclare(queue, true, false, false, null);
@@ -189,6 +194,8 @@ public class Worker extends DefaultConsumer {
         }));
 
         return consumer;
+        */
+        return null;
     }
 
     public static void main(String[] argv) throws Exception {

@@ -30,7 +30,7 @@ Patches providing any of these are welcome.
 ## Maven dependency
 
 Releases are available from Maven Central. Latest version: [![Maven
-Central](https://maven-badges.herokuapp.com/maven-central/org.sedlakovi.celery/celery-java/badge.svg?style=plastic)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.sedlakovi.celery%22%20AND%20a%3A%22celery-java%22)
+Central](https://maven-badges.herokuapp.com/maven-central/org.sedlakovi.celery/celery-java/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.sedlakovi.celery%22%20AND%20a%3A%22celery-java%22)
 
 ```xml
 <dependency>

@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+/**
+ * DTO representing result on the wire.
+ */
 class TaskResult {
     public List<?> children;
     public Status status;

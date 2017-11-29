@@ -67,7 +67,7 @@ public class RabbitBackend {
         channel.abort();
     }
 
-    public RabbitResultConsumer createResultConsumer(String clientId) throws IOException {
+    RabbitResultConsumer createResultConsumer(String clientId) throws IOException {
         channel.queueDeclare(clientId, false, false, true,
                              ImmutableMap.of("x-expires", 24 * 3600 * 1000));
         RabbitResultConsumer consumer = new RabbitResultConsumer(channel);

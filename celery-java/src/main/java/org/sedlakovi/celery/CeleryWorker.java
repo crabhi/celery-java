@@ -24,6 +24,7 @@ import com.rabbitmq.client.Envelope;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -104,7 +105,11 @@ public class CeleryWorker extends DefaultConsumer {
 
         List<String> name = ImmutableList.copyOf(Splitter.on("#").split(taskName).iterator());
 
-        assert name.size() == 2;
+        if (name.size() != 2) {
+            throw new DispatchException(MessageFormat.format(
+                    "This worker can only process tasks with name in form package.ClassName#method, got {}",
+                    taskName));
+        }
 
         Object task = TaskRegistry.getTask(name.get(0));
 

@@ -1,17 +1,17 @@
 package ${packageName};
 
 import java.util.concurrent.Future;
-import org.sedlakovi.celery.Client;
+import org.sedlakovi.celery.Celery;
 
 public final class ${taskName}Proxy {
 
-    private final Client client;
+    private final Celery client;
 
-    private ${taskName}Proxy(Client client) {
+    private ${taskName}Proxy(Celery client) {
         this.client = client;
     }
 
-    public static ${packageName}.${taskName}Proxy with(Client client) {
+    public static ${packageName}.${taskName}Proxy with(Celery client) {
         return new ${packageName}.${taskName}Proxy(client);
     }
 

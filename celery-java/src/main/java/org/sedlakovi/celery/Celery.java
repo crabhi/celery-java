@@ -18,7 +18,7 @@ import java.util.concurrent.Future;
 /**
  * A client allowing you to submit a task and get a {@link Future} describing the result.
  */
-public class Client {
+public class Celery {
     private final Channel channel;
     private final String queue;
     private final String clientId;
@@ -26,7 +26,7 @@ public class Client {
     private final ObjectMapper jsonMapper;
     private final RabbitResultConsumer resultConsumer;
 
-    public Client(Channel channel, RabbitBackend backend, String queue) throws IOException {
+    public Celery(Channel channel, RabbitBackend backend, String queue) throws IOException {
         this.channel = channel;
         this.queue = queue;
         this.clientId = UUID.randomUUID().toString();
@@ -36,7 +36,7 @@ public class Client {
         this.resultConsumer = backend.createResultConsumer(clientId);
     }
 
-    public Client(Channel channel, RabbitBackend backend) throws IOException {
+    public Celery(Channel channel, RabbitBackend backend) throws IOException {
         this(channel, backend, "celery");
     }
 

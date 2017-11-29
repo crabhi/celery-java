@@ -1,8 +1,8 @@
 package org.sedlakovi.celery.examples;
 
-import org.sedlakovi.celery.Task;
+import org.sedlakovi.celery.CeleryTask;
 
-@Task
+@CeleryTask
 public class TestTask {
 
     public int sum(int x, int y) {

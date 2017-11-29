@@ -6,7 +6,7 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.kohsuke.MetaInfServices;
-import org.sedlakovi.celery.Task;
+import org.sedlakovi.celery.CeleryTask;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
@@ -37,7 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @MetaInfServices(Processor.class)
-@SupportedAnnotationTypes("org.sedlakovi.celery.Task")
+@SupportedAnnotationTypes("org.sedlakovi.celery.CeleryTask")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class TaskProcessor extends AbstractProcessor {
 
@@ -60,14 +60,14 @@ public class TaskProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
 
-        for (Element elem : roundEnv.getElementsAnnotatedWith(Task.class)) {
+        for (Element elem : roundEnv.getElementsAnnotatedWith(CeleryTask.class)) {
             assert elem.getKind() == ElementKind.CLASS;
 
             TypeElement taskClassElem = (TypeElement) elem;
 
             if (taskClassElem.getNestingKind().isNested()) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                        "Error processing Task " + taskClassElem + ". Only top-level classes are supported as tasks.");
+                        "Error processing CeleryTask " + taskClassElem + ". Only top-level classes are supported as tasks.");
                 break;
             }
 

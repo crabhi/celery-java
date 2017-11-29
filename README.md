@@ -59,12 +59,12 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 
 ## Calling a Java task from Python
 
-1. Annotate your class that does something useful as a `@Task`.
+1. Annotate your class that does something useful as a `@CeleryTask`.
 
     ```java
-    import org.sedlakovi.celery.Task;
+    import org.sedlakovi.celery.CeleryTask;
 
-    @Task
+    @CeleryTask
     public class TestTask {
 
         public int sum(int x, int y) {
@@ -77,11 +77,11 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 function.
 
     ```java
-    import org.sedlakovi.celery.Worker;
+    import org.sedlakovi.celery.CeleryWorker;
 
     public class MyWorker {
         public static void main(String[] args) throws Exception {
-            Worker.main(args);
+            CeleryWorker.main(args);
         }
     }
     ```
@@ -110,21 +110,21 @@ function.
 
 ```java
 RabbitBackend backend = new RabbitBackend(rabbitConnection.createChannel());
-Client client = new Client(rabbitConnection.createChannel(), backend);
+Celery client = new Celery(rabbitConnection.createChannel(), backend);
 
 System.out.println(client.submit("tasks.add", 1, 2).get());
 ```
 
 ## Calling Java task from Java
 
-The `@Task` annotation on a class `MyClass` causes `MyClassProxy` and `MyClassLoader` to be generated.
+The `@CeleryTask` annotation on a class `MyClass` causes `MyClassProxy` and `MyClassLoader` to be generated.
 `MyClassLoader` registers the task into the worker and `MyClassProxy` has all the task methods tweaked so they
 now return a `Future<...>` instead of the original type.
 
 To use the proxy, you need a Celery `Client`.
 
 ```java
-Client client = new Client(rabbitConnectionChannel, rabbitBackend);
+Celery client = new Celery(rabbitConnectionChannel, rabbitBackend);
 
 Integer result = TestTaskProxy.with(client).sum(1, 7).get();
 ```

@@ -104,7 +104,7 @@ var activeTableTab = "activeTableTab";
 <li>com.rabbitmq.client.DefaultConsumer</li>
 <li>
 <ul class="inheritance">
-<li>org.sedlakovi.celery.Worker</li>
+<li>org.sedlakovi.celery.CeleryWorker</li>
 </ul>
 </li>
 </ul>
@@ -125,7 +125,7 @@ extends com.rabbitmq.client.DefaultConsumer</pre>
  <a href="../../../org/sedlakovi/celery/Worker.html#create-java.lang.String-com.rabbitmq.client.Connection-"><code>create(String, Connection)</code></a> or start it stand-alone and supply your tasks on classpath like this:
 
  <pre>
- java -cp celery-java-xyz.jar:your-tasks.jar org.sedlakovi.celery.Worker --concurrency 8
+ java -cp celery-java-xyz.jar:your-tasks.jar org.sedlakovi.celery.CeleryWorker --concurrency 8
  </pre></div>
 </li>
 </ul>

@@ -1,6 +1,8 @@
 package org.sedlakovi.celery.backends.rabbit
 
+import com.rabbitmq.client.BasicProperties
 import com.rabbitmq.client.Channel
+import groovy.json.JsonSlurper
 import org.sedlakovi.celery.WorkerException
 import spock.genesis.Gen
 import spock.lang.Specification
@@ -26,6 +28,57 @@ class RabbitBackendTest extends Specification {
 
         where:
         clientId << Gen.string(50).take(8)
+    }
+
+    def "Backend should report successful result"() {
+        def Channel channel = Mock(Channel.class)
+        def backend = new RabbitBackend(channel)
+        def BasicProperties props
+        def result
+
+        when:
+        backend.reportResult(taskId, queue, correlationId, data)
+        then:
+        1 * channel.basicPublish("", queue, { props = it}, { result = new JsonSlurper().parse(it, "utf-8")})
+        props.correlationId == correlationId
+        props.contentType == "application/json"
+        props.contentEncoding == "utf-8"
+        props.deliveryMode == 1  // non-peristent
+        result["status"] == "SUCCESS"
+        result["task_id"] == taskId
+        result["result"] == data
+
+        where:
+        correlationId << Gen.string(50).take(3)
+        taskId << Gen.string(50).take(3)
+        queue << Gen.string(20).take(3)
+        data << [["x"], ["a": 1, "b": ["x"]], 12]
+    }
+
+    def "Backend should report exception"() {
+        def Channel channel = Mock(Channel.class)
+        def backend = new RabbitBackend(channel)
+        def BasicProperties props
+        def result
+
+        when:
+        backend.reportException(taskId, queue, correlationId, data)
+        then:
+        1 * channel.basicPublish("", queue, { props = it}, { result = new JsonSlurper().parse(it, "utf-8")})
+        props.correlationId == correlationId
+        props.contentType == "application/json"
+        props.contentEncoding == "utf-8"
+        props.deliveryMode == 1  // non-peristent
+        result["status"] == "FAILURE"
+        result["task_id"] == taskId
+        result["result"]["exc_type"] == data.class.simpleName
+        result["result"]["exc_message"] == data.message
+
+        where:
+        correlationId << Gen.string(50).take(3)
+        taskId << Gen.string(50).take(3)
+        queue << Gen.string(20).take(3)
+        data << [new IOException("Xdan"), new AssertionError("Bada"), new RuntimeException()]
     }
 }
 

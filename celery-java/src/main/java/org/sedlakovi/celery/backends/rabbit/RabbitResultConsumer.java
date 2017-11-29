@@ -47,7 +47,7 @@ class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.Resu
 
         SettableFuture<Object> future = getFuture(payload.taskId);
         boolean setAccepted;
-         if (payload.status == TaskResult.Status.SUCCESS) {
+        if (payload.status == TaskResult.Status.SUCCESS) {
             setAccepted = future.set(payload.result);
         } else {
             @SuppressWarnings("unchecked")

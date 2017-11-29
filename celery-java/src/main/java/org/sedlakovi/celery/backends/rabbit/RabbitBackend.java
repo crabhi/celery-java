@@ -8,6 +8,8 @@ import org.sedlakovi.celery.backends.TaskResult;
 import org.sedlakovi.celery.spi.Backend;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * <p>
@@ -21,6 +23,7 @@ import java.io.IOException;
 public class RabbitBackend implements Backend {
 
     private final Channel channel;
+    private final ObjectMapper jsonMapper = new ObjectMapper();
 
     public RabbitBackend(Channel channel) {
         this.channel = channel;
@@ -34,16 +37,8 @@ public class RabbitBackend implements Backend {
         channel.basicConsume(clientId, consumer);
         return consumer;
     }
-    /*
-    private final Channel channel;
-    private final ObjectMapper jsonMapper;
 
-    public RabbitBackend(Channel channel) {
-        this.channel = channel;
-        jsonMapper = new ObjectMapper();
-    }
-
-    void reportResult(String taskId, String replyTo, String correlationId, Object result)
+    public void reportResult(String taskId, String queue, String correlationId, Object result)
             throws IOException {
 
         AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
@@ -59,10 +54,10 @@ public class RabbitBackend implements Backend {
         res.taskId = taskId;
         res.status = TaskResult.Status.SUCCESS;
 
-        channel.basicPublish("", replyTo, properties, jsonMapper.writeValueAsBytes(res));
+        channel.basicPublish("", queue, properties, jsonMapper.writeValueAsBytes(res));
     }
 
-    void reportException(String taskId, String replyTo, String correlationId, Throwable e) throws IOException {
+    public void reportException(String taskId, String replyTo, String correlationId, Throwable e) throws IOException {
         AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
                 .correlationId(correlationId)
                 .priority(0)
@@ -71,26 +66,19 @@ public class RabbitBackend implements Backend {
                 .contentEncoding("utf-8")
                 .build();
 
+        Map<String, String> excInfo = new HashMap<>();
+        excInfo.put("exc_type", e.getClass().getSimpleName());
+        excInfo.put("exc_message", e.getMessage());
+
         TaskResult res = new TaskResult();
-        res.result = ImmutableMap.of(
-                "exc_type", e.getClass().getSimpleName(),
-                "exc_message", e.getMessage());
+        res.result = excInfo;
         res.taskId = taskId;
         res.status = TaskResult.Status.FAILURE;
 
         channel.basicPublish("", replyTo, properties, jsonMapper.writeValueAsBytes(res));
     }
 
-    void close() throws IOException {
+    public void close() throws IOException {
         channel.abort();
     }
-
-    RabbitResultConsumer createResultConsumer(String clientId) throws IOException {
-        channel.queueDeclare(clientId, false, false, true,
-                             ImmutableMap.of("x-expires", 24 * 3600 * 1000));
-        RabbitResultConsumer consumer = new RabbitResultConsumer(channel);
-        channel.basicConsume(clientId, consumer);
-        return consumer;
-    }
-    */
 }

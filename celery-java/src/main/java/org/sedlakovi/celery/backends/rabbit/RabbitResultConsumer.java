@@ -19,26 +19,11 @@ import java.util.concurrent.Future;
 
 class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.ResultsProvider {
 
-    public RabbitResultConsumer(Channel channel) {
-        super(channel);
-    }
-
-    @Override
-    public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-
-    }
-
-    @Override
-    public ListenableFuture<?> getResult(String taskId) {
-        return null;
-    }
-
-    /*
     private final Cache<String, SettableFuture<Object>> tasks = CacheBuilder.newBuilder().build();
     private final ObjectMapper jsonMapper = new ObjectMapper();
 
-    public Future<?> getResult(String taskId) {
-        return getFuture(taskId);
+    public RabbitResultConsumer(Channel channel) {
+        super(channel);
     }
 
     private SettableFuture<Object> getFuture(String taskId) {
@@ -50,6 +35,11 @@ class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.Resu
     }
 
     @Override
+    public ListenableFuture<?> getResult(String taskId) {
+        return getFuture(taskId);
+    }
+
+    @Override
     public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
             throws IOException {
 
@@ -57,7 +47,7 @@ class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.Resu
 
         SettableFuture<Object> future = getFuture(payload.taskId);
         boolean setAccepted;
-        if (payload.status == TaskResult.Status.SUCCESS) {
+         if (payload.status == TaskResult.Status.SUCCESS) {
             setAccepted = future.set(payload.result);
         } else {
             @SuppressWarnings("unchecked")
@@ -67,5 +57,4 @@ class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.Resu
         }
         assert setAccepted;
     }
-    */
 }

@@ -1,2 +1,6 @@
 org.sedlakovi.celery
 org.sedlakovi.celery.annotationprocessor
+org.sedlakovi.celery.backends
+org.sedlakovi.celery.backends.rabbit
+org.sedlakovi.celery.brokers.rabbit
+org.sedlakovi.celery.spi

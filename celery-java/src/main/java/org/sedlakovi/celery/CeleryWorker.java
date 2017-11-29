@@ -25,6 +25,7 @@ import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -36,22 +37,22 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Worker that listens on RabbitMQ queue and executes tasks. You can either embed it into your project via
+ * CeleryWorker that listens on RabbitMQ queue and executes tasks. You can either embed it into your project via
  * {@link #create(String, Connection)} or start it stand-alone and supply your tasks on classpath like this:
  *
  * <pre>
- * java -cp celery-java-xyz.jar:your-tasks.jar org.sedlakovi.celery.Worker --concurrency 8
+ * java -cp celery-java-xyz.jar:your-tasks.jar org.sedlakovi.celery.CeleryWorker --concurrency 8
  * </pre>
  */
-public class Worker extends DefaultConsumer {
+public class CeleryWorker extends DefaultConsumer {
 
     private final ObjectMapper jsonMapper;
     private final Lock taskRunning = new ReentrantLock();
     private final RabbitBackend backend;
 
-    private static final Logger LOG = Logger.getLogger(Worker.class.getName());
+    private static final Logger LOG = Logger.getLogger(CeleryWorker.class.getName());
 
-    public Worker(Channel channel, RabbitBackend backend) {
+    public CeleryWorker(Channel channel, RabbitBackend backend) {
         super(channel);
         this.backend = backend;
         jsonMapper = new ObjectMapper();
@@ -75,25 +76,25 @@ public class Worker extends DefaultConsumer {
                     (ArrayNode) payload.get(0),
                     (ObjectNode) payload.get(1));
 
-            LOG.info(String.format("Task %s[%s] succeeded in %s. Result was: %s",
+            LOG.info(String.format("CeleryTask %s[%s] succeeded in %s. Result was: %s",
                     taskClassName, taskId, stopwatch, result));
 
             backend.reportResult(taskId, properties.getReplyTo(), properties.getCorrelationId(), result);
 
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (DispatchException e) {
-            LOG.log(Level.SEVERE, String.format("Task %s dispatch error", taskId), e.getCause());
+            LOG.log(Level.SEVERE, String.format("CeleryTask %s dispatch error", taskId), e.getCause());
             backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(), e);
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (InvocationTargetException e) {
-            LOG.log(Level.WARNING, String.format("Task %s error", taskId), e.getCause());
+            LOG.log(Level.WARNING, String.format("CeleryTask %s error", taskId), e.getCause());
             backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(), e.getCause());
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (JsonProcessingException e) {
-            LOG.log(Level.SEVERE, String.format("Task %s - %s", taskId, e), e.getCause());
+            LOG.log(Level.SEVERE, String.format("CeleryTask %s - %s", taskId, e), e.getCause());
             getChannel().basicNack(envelope.getDeliveryTag(), false, false);
         } catch (RuntimeException e) {
-            LOG.log(Level.SEVERE, String.format("Task %s - %s", taskId, e), e);
+            LOG.log(Level.SEVERE, String.format("CeleryTask %s - %s", taskId, e), e);
             getChannel().basicNack(envelope.getDeliveryTag(), false, false);
         } finally {
             taskRunning.unlock();
@@ -106,12 +107,16 @@ public class Worker extends DefaultConsumer {
 
         List<String> name = ImmutableList.copyOf(Splitter.on("#").split(taskName).iterator());
 
-        assert name.size() == 2;
+        if (name.size() != 2) {
+            throw new DispatchException(MessageFormat.format(
+                    "This worker can only process tasks with name in form package.ClassName#method, got {}",
+                    taskName));
+        }
 
         Object task = TaskRegistry.getTask(name.get(0));
 
         if (task == null) {
-            throw new DispatchException(String.format("Task %s not registered.", taskName));
+            throw new DispatchException(String.format("CeleryTask %s not registered.", taskName));
         }
 
         Method method = Arrays.stream(task.getClass().getDeclaredMethods())
@@ -175,13 +180,13 @@ public class Worker extends DefaultConsumer {
         private String broker = "amqp://localhost//";
     }
 
-    public static Worker create(String queue, Connection connection) throws IOException {
+    public static CeleryWorker create(String queue, Connection connection) throws IOException {
         /*
         final Channel channel = connection.createChannel();
         channel.basicQos(2);
         channel.queueDeclare(queue, true, false, false, null);
         RabbitBackend backend = new RabbitBackend(channel);
-        final Worker consumer = new Worker(channel, backend);
+        final CeleryWorker consumer = new CeleryWorker(channel, backend);
         channel.basicConsume(queue, false, "", true, false, null, consumer);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

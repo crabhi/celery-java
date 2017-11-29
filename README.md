@@ -10,7 +10,7 @@ Java implementation of [Celery][celery] client and worker. Quoting from the proj
 The aim is to be compatible with existing [Python Celery implementation][celery]. That means you should be able
 to run a Java client with a Python worker or vice-versa. Tested with Python Celery 4.1.
 
-At the moment, this is a very alpha version. It can 
+At the moment, this is a very alpha version. It can
 
 - execute a task
 - report result
@@ -29,7 +29,8 @@ Patches providing any of these are welcome.
 
 ## Maven dependency
 
-Releases are available from Maven Central.
+Releases are available from Maven Central. Latest version: [![Maven
+Central](https://maven-badges.herokuapp.com/maven-central/org.sedlakovi.celery/celery-java/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.sedlakovi.celery%22%20AND%20a%3A%22celery-java%22)
 
 ```xml
 <dependency>
@@ -58,29 +59,29 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 
 ## Calling a Java task from Python
 
-1. Annotate your class that does something useful as a `@Task`.
+1. Annotate your class that does something useful as a `@CeleryTask`.
 
     ```java
-    import org.sedlakovi.celery.Task;
-    
-    @Task
+    import org.sedlakovi.celery.CeleryTask;
+
+    @CeleryTask
     public class TestTask {
-    
+
         public int sum(int x, int y) {
             return x + y;
         }
     }
     ```
 
-2. Run `Worker` with your tasks on classpath. You can directly use the `Worker` class or embed it into your `main` 
+2. Run `Worker` with your tasks on classpath. You can directly use the `Worker` class or embed it into your `main`
 function.
 
     ```java
-    import org.sedlakovi.celery.Worker;
-    
+    import org.sedlakovi.celery.CeleryWorker;
+
     public class MyWorker {
         public static void main(String[] args) throws Exception {
-            Worker.main(args);
+            CeleryWorker.main(args);
         }
     }
     ```
@@ -89,15 +90,15 @@ function.
 
     ```python
     In [1]: import celery
-    
+
     In [2]: app = celery.Celery(broker="amqp://localhost/", backend="rpc://localhost")
-    
+
     In [3]: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
     Out[3]: 3
-    
+
     In [4]: %%timeit
        ...: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
-       ...: 
+       ...:
     2.1 ms ± 170 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     ```
 
@@ -109,21 +110,21 @@ function.
 
 ```java
 RabbitBackend backend = new RabbitBackend(rabbitConnection.createChannel());
-Client client = new Client(rabbitConnection.createChannel(), backend);
+Celery client = new Celery(rabbitConnection.createChannel(), backend);
 
 System.out.println(client.submit("tasks.add", new Object[]{1, 2}).get());
 ```
 
 ## Calling Java task from Java
 
-The `@Task` annotation on a class `MyClass` causes `MyClassProxy` and `MyClassLoader` to be generated. 
-`MyClassLoader` registers the task into the worker and `MyClassProxy` has all the task methods tweaked so they 
+The `@CeleryTask` annotation on a class `MyClass` causes `MyClassProxy` and `MyClassLoader` to be generated.
+`MyClassLoader` registers the task into the worker and `MyClassProxy` has all the task methods tweaked so they
 now return a `Future<...>` instead of the original type.
 
 To use the proxy, you need a Celery `Client`.
 
 ```java
-Client client = new Client(rabbitConnectionChannel, rabbitBackend);
+Celery client = new Celery(rabbitConnectionChannel, rabbitBackend);
 
 Integer result = TestTaskProxy.with(client).sum(1, 7).get();
 ```

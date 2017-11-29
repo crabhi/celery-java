@@ -12,14 +12,14 @@ import spock.lang.Specification
 class ClientTest extends Specification {
 
     def Broker broker
-    def Client client
+    def Celery client
 
     def Message message
     def Message.Headers headers
 
     def setup() {
         broker = Mock(Broker)
-        client = new Client(broker)
+        client = new Celery(broker)
 
         message = Mock(Message.class)
         headers = Mock(Message.Headers.class)
@@ -66,7 +66,7 @@ class ClientTest extends Specification {
     }
 
     def "Client should send message to the right queue"() {
-        client = new Client(broker, queue)
+        client = new Celery(broker, queue)
         when:
         client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
         then:
@@ -94,7 +94,7 @@ class ClientTest extends Specification {
 
 class ClientWithBackendTest extends Specification {
 
-    def Client client
+    def Celery client
     def Broker broker
 
     def Message message
@@ -105,7 +105,7 @@ class ClientWithBackendTest extends Specification {
 
     def setup() {
         broker = Mock(Broker)
-        client = new Client(broker)
+        client = new Celery(broker)
 
         message = Mock(Message.class)
         headers = Mock(Message.Headers.class)
@@ -117,14 +117,14 @@ class ClientWithBackendTest extends Specification {
         resultsProvider = Mock(Backend.ResultsProvider.class)
         backend.resultsProviderFor(_) >> resultsProvider
 
-        client = new Client(broker, backend)
+        client = new Celery(broker, backend)
     }
 
     def "Client ID and task ID should be different for each client"() {
         def clientIds = [], taskIds = []
         when:
         (1..10).each {
-            client = new Client(broker, backend)
+            client = new Celery(broker, backend)
             client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
         }
         then:
@@ -174,13 +174,13 @@ class ClientWithBackendTest extends Specification {
 
 class MultiMessageTest extends Specification {
     def Broker broker
-    def Client client
+    def Celery client
 
     def messages = []
 
     def setup() {
         broker = Mock(Broker)
-        client = new Client(broker)
+        client = new Celery(broker)
 
         (0..5).each {
             def message = Mock(Message.class)

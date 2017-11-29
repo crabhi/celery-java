@@ -77,7 +77,7 @@ public class Celery {
      *
      * @throws IOException
      */
-    public AsyncResult submit(Class<?> taskClass, String method, Object[] args) throws IOException {
+    public AsyncResult<?> submit(Class<?> taskClass, String method, Object[] args) throws IOException {
         return submit(taskClass.getName() + "#" + method, args);
     }
 
@@ -90,7 +90,7 @@ public class Celery {
      * @return asynchronous result
      * @throws IOException
      */
-    public AsyncResult submit(String name, Object[] args) throws IOException {
+    public AsyncResult<?> submit(String name, Object[] args) throws IOException {
         String taskId = UUID.randomUUID().toString();
 
         ArrayNode payload = jsonMapper.createArrayNode();
@@ -112,6 +112,7 @@ public class Celery {
 
         Message.Headers headers = message.getHeaders();
         headers.setId(taskId);
+        headers.setTaskName(name);
         headers.setArgsRepr("(" + Joiner.on(", ").join(args) + ")");
         headers.setOrigin(clientName);
         if (resultsProvider.isPresent()) {
@@ -120,26 +121,26 @@ public class Celery {
 
         message.send(queue);
 
-        Future<?> result;
+        Future<Object> result;
         if (resultsProvider.isPresent()) {
-            result = resultsProvider.get().getResult("x");
+            result = resultsProvider.get().getResult(taskId);
         } else {
             result = CompletableFuture.completedFuture(null);
         }
-        return new AsyncResultImpl(result);
+        return new AsyncResultImpl<Object>(result);
     }
 
-    public interface AsyncResult {
+    public interface AsyncResult<T> {
         boolean isDone();
 
-        Object get() throws ExecutionException, InterruptedException;
+        T get() throws ExecutionException, InterruptedException;
     }
 
-    private class AsyncResultImpl implements AsyncResult {
+    private class AsyncResultImpl<T> implements AsyncResult<T> {
 
-        private final Future<?> future;
+        private final Future<T> future;
 
-        AsyncResultImpl(Future<?> future) {
+        AsyncResultImpl(Future<T> future) {
             this.future = future;
         }
 
@@ -149,7 +150,7 @@ public class Celery {
         }
 
         @Override
-        public Object get() throws ExecutionException, InterruptedException {
+        public T get() throws ExecutionException, InterruptedException {
             return future.get();
         }
     }

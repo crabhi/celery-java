@@ -24,5 +24,7 @@ public interface Message {
         void setOrigin(String origin);
 
         void setReplyTo(String clientId);
+
+        void setTaskName(String task);
     }
 }

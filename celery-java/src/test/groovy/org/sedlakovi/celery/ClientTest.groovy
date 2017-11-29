@@ -90,6 +90,23 @@ class ClientTest extends Specification {
         result.isDone()
         result.get() == null
     }
+
+    def "Client should set task name for class"() {
+        when:
+        client.submit(TestingTask.class, "doWork", [] as Object[])
+        then:
+        1 * message.headers.setTaskName("org.sedlakovi.celery.TestingTask#doWork")
+    }
+
+    def "Client should set task name"() {
+        when:
+        client.submit(taskName, [] as Object[])
+        then:
+        1 * message.headers.setTaskName(taskName)
+
+        where:
+        taskName << Gen.string.take(5)
+    }
 }
 
 class ClientWithBackendTest extends Specification {
@@ -169,6 +186,19 @@ class ClientWithBackendTest extends Specification {
 
         where:
         resultVal << Gen.string.take(1)
+    }
+
+    def "Client should ask the backend for correct task ID"() {
+        def taskId
+        when:
+        client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
+
+        then:
+        1 * message.headers.setId({ taskId = it })
+
+        and:
+        taskId != null
+        1 * resultsProvider.getResult({ it == taskId })
     }
 }
 

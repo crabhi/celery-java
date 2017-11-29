@@ -21,6 +21,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
+import org.sedlakovi.celery.spi.Backend;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -48,11 +49,11 @@ public class CeleryWorker extends DefaultConsumer {
 
     private final ObjectMapper jsonMapper;
     private final Lock taskRunning = new ReentrantLock();
-    private final RabbitBackend backend;
+    private final Backend backend;
 
     private static final Logger LOG = Logger.getLogger(CeleryWorker.class.getName());
 
-    public CeleryWorker(Channel channel, RabbitBackend backend) {
+    public CeleryWorker(Channel channel, Backend backend) {
         super(channel);
         this.backend = backend;
         jsonMapper = new ObjectMapper();
@@ -62,8 +63,8 @@ public class CeleryWorker extends DefaultConsumer {
     public void handleDelivery(String consumerTag, Envelope envelope,
                                AMQP.BasicProperties properties, byte[] body)
             throws IOException {
-/*        taskRunning.lock();
         String taskId = properties.getHeaders().get("id").toString();
+        taskRunning.lock();
         try {
             Stopwatch stopwatch = Stopwatch.createStarted();
             String message = new String(body, properties.getContentEncoding());
@@ -92,14 +93,16 @@ public class CeleryWorker extends DefaultConsumer {
             getChannel().basicAck(envelope.getDeliveryTag(), false);
         } catch (JsonProcessingException e) {
             LOG.log(Level.SEVERE, String.format("CeleryTask %s - %s", taskId, e), e.getCause());
+            backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(), e);
             getChannel().basicNack(envelope.getDeliveryTag(), false, false);
         } catch (RuntimeException e) {
             LOG.log(Level.SEVERE, String.format("CeleryTask %s - %s", taskId, e), e);
+            backend.reportException(taskId, properties.getReplyTo(), properties.getCorrelationId(),
+                    e.getCause() != null ? e.getCause() : e);
             getChannel().basicNack(envelope.getDeliveryTag(), false, false);
         } finally {
             taskRunning.unlock();
         }
-        */
     }
 
     private Object processTask(String taskName, ArrayNode args, ObjectNode kwargs)
@@ -139,10 +142,8 @@ public class CeleryWorker extends DefaultConsumer {
     }
 
     public void close() throws IOException {
-        /*
         getChannel().abort();
         backend.close();
-        */
     }
 
     public void join() {
@@ -181,7 +182,6 @@ public class CeleryWorker extends DefaultConsumer {
     }
 
     public static CeleryWorker create(String queue, Connection connection) throws IOException {
-        /*
         final Channel channel = connection.createChannel();
         channel.basicQos(2);
         channel.queueDeclare(queue, true, false, false, null);
@@ -199,8 +199,6 @@ public class CeleryWorker extends DefaultConsumer {
         }));
 
         return consumer;
-        */
-        return null;
     }
 
     public static void main(String[] argv) throws Exception {

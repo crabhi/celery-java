@@ -8,6 +8,7 @@ import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
 import org.sedlakovi.celery.CeleryWorker;
 import org.sedlakovi.celery.brokers.rabbit.RabbitBroker;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Main {
@@ -15,7 +16,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
-        Connection connection = factory.newConnection(Executors.newCachedThreadPool());
+        ExecutorService executor = Executors.newCachedThreadPool();
+        Connection connection = factory.newConnection(executor);
 
         CeleryWorker worker = CeleryWorker.create("celery", connection);
 
@@ -37,6 +39,7 @@ public class Main {
             connection.close();
             worker.close();
             worker.join();
+            executor.shutdown();
         }
 
         // The worker threads hang waiting for the messages for some reason for quite a long time but eventually,

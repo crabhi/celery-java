@@ -74,6 +74,7 @@ public class RabbitBroker implements Broker {
             public void setId(String id) {
                 props.correlationId(id);
                 map.put("root_id", id);
+                map.put("id", id);
             }
 
             @Override
@@ -89,6 +90,11 @@ public class RabbitBroker implements Broker {
             @Override
             public void setReplyTo(String clientId) {
                 props.replyTo(clientId);
+            }
+
+            @Override
+            public void setTaskName(String task) {
+                map.put("task", task);
             }
         }
     }

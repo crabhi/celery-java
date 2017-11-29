@@ -122,6 +122,7 @@ class RabbitBrokerTest extends Specification {
         props.headers["lang"] == "py"  // sic
         props.headers["group"] == null
         props.headers["origin"] == clientName
+        props.headers["id"] == id
 
 
         where:
@@ -161,5 +162,22 @@ class RabbitBrokerTest extends Specification {
         }
         then:
         (messages.collect{System.identityHashCode(it)} as Set).size() == 5
+    }
+
+    def "it should set task name"() {
+        def BasicProperties props
+
+        when:
+        message.headers.id = messageId
+        message.headers.taskName = task
+        message.send()
+
+        then:
+        1 * channel.basicPublish("", "celery", { props = it }, _);
+        props.headers["task"] == task
+
+        where:
+        messageId << (0..5).collect({UUID.randomUUID().toString()})
+        task << Gen.these("x.y.z.SomeClass#method", "Cls#method", "xyz").then(Gen.string(50)).take(6)
     }
 }

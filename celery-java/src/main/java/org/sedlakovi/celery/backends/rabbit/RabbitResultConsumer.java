@@ -35,7 +35,7 @@ class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.Resu
     }
 
     @Override
-    public ListenableFuture<?> getResult(String taskId) {
+    public ListenableFuture<Object> getResult(String taskId) {
         return getFuture(taskId);
     }
 

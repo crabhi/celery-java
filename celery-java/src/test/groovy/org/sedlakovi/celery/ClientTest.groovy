@@ -1,6 +1,5 @@
 package org.sedlakovi.celery
 
-import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.SettableFuture
 import groovy.json.JsonSlurper
 import org.sedlakovi.celery.spi.Backend

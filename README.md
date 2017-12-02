@@ -18,7 +18,6 @@ At the moment, this is a very alpha version. It can
 
 What's missing:
 
-- tests
 - advanced features of Celery protocol
     - retries
     - chords
@@ -128,6 +127,25 @@ Celery client = new Celery(rabbitConnectionChannel, rabbitBackend);
 
 Integer result = TestTaskProxy.with(client).sum(1, 7).get();
 ```
+
+## Development
+
+### Local build
+
+Build with `mvn -Dgpg.skip` to avoid the signing step.
+
+### Releasing
+
+    mvn release:clean release:prepare
+    mvn release:perform
+
+### Tests
+
+Unit tests are part of the `celery-java` module. Integration tests are part of the `examples` module and are
+based on the example tasks.
+They start the queue in backend automatically via Docker. You need to have Docker configured on the machine running
+the tests of the `examples` module.
+
 
 [celery-py-start]: http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html
 [celery]: http://www.celeryproject.org/

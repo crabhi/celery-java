@@ -178,7 +178,7 @@ public class CeleryWorker extends DefaultConsumer {
         private int numWorkers = 2;
 
         @Parameter(names = "--broker", description = "Broker URL, e. g. amqp://localhost//")
-        private String broker = "amqp://localhost//";
+        private String broker = "amqp://localhost/%2F";
     }
 
     public static CeleryWorker create(String queue, Connection connection) throws IOException {

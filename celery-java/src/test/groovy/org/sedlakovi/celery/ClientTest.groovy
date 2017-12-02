@@ -199,6 +199,21 @@ class ClientWithBackendTest extends Specification {
         taskId != null
         1 * resultsProvider.getResult({ it == taskId })
     }
+
+    def "Client should declare queue before sending its message"() {
+        when:
+        client = new Celery(broker, queue)
+        client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
+
+        then:
+        1 * broker.declareQueue(queue)
+
+        then:
+        1* message.send(queue)
+
+        where:
+        queue << Gen.string.take(5)
+    }
 }
 
 class MultiMessageTest extends Specification {

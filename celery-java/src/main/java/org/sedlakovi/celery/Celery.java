@@ -60,6 +60,8 @@ public class Celery {
         } else {
             resultsProvider = Optional.of(backend.resultsProviderFor(clientId));
         }
+
+        broker.declareQueue(queue);
     }
 
     public Celery(Broker broker) throws IOException {

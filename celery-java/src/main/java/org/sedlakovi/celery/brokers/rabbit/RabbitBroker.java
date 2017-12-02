@@ -18,6 +18,11 @@ public class RabbitBroker implements Broker {
     }
 
     @Override
+    public void declareQueue(String name) throws IOException {
+        channel.queueDeclare(name, true, false, false, null);
+    }
+
+    @Override
     public Message newMessage() {
         return new RabbitMessage();
     }

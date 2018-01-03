@@ -10,21 +10,21 @@ import spock.lang.Specification
 
 class ClientTest extends Specification {
 
-    def Broker broker
     def Celery client
 
     def Message message
     def Message.Headers headers
 
     def setup() {
-        broker = Mock(Broker)
-        client = new Celery(broker)
+        MockBrokerFactory.queuesDeclared = []
 
         message = Mock(Message.class)
         headers = Mock(Message.Headers.class)
 
         message.getHeaders() >> headers
-        broker.newMessage() >> message
+        MockBrokerFactory.messages = [message]
+
+        client = Celery.builder().brokerUri("mock://anything").build()
     }
 
     def "Client should send UTF-8 encoded JSON payload by default"() {
@@ -65,7 +65,7 @@ class ClientTest extends Specification {
     }
 
     def "Client should send message to the right queue"() {
-        client = new Celery(broker, queue)
+        client = Celery.builder().brokerUri("mock://broker").queue(queue).build()
         when:
         client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
         then:
@@ -120,27 +120,27 @@ class ClientWithBackendTest extends Specification {
     def Backend.ResultsProvider resultsProvider
 
     def setup() {
-        broker = Mock(Broker)
-        client = new Celery(broker)
+        MockBrokerFactory.queuesDeclared = []
 
         message = Mock(Message.class)
         headers = Mock(Message.Headers.class)
 
         message.getHeaders() >> headers
-        broker.newMessage() >> message
+        MockBrokerFactory.messages = [message]
 
         backend = Mock(Backend.class)
         resultsProvider = Mock(Backend.ResultsProvider.class)
         backend.resultsProviderFor(_) >> resultsProvider
+        MockBackendFactory.backend = backend
 
-        client = new Celery(broker, backend)
+        client = Celery.builder().brokerUri("mock://x").backendUri("mock://something").build()
     }
 
     def "Client ID and task ID should be different for each client"() {
         def clientIds = [], taskIds = []
         when:
         (1..10).each {
-            client = new Celery(broker, backend)
+            client = Celery.builder().brokerUri("mock://x").backendUri("mock://something").build()
             client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
         }
         then:
@@ -202,11 +202,11 @@ class ClientWithBackendTest extends Specification {
 
     def "Client should declare queue before sending its message"() {
         when:
-        client = new Celery(broker, queue)
+        client = Celery.builder().brokerUri("mock://x").queue(queue).build()
         client.submit(TestingTask.class, "doWork", [0.5, new Payload(prop1: "p1val")] as Object[])
 
         then:
-        1 * broker.declareQueue(queue)
+        MockBrokerFactory.queuesDeclared == [queue]
 
         then:
         1* message.send(queue)
@@ -224,7 +224,7 @@ class MultiMessageTest extends Specification {
 
     def setup() {
         broker = Mock(Broker)
-        client = new Celery(broker)
+        client = Celery.builder().brokerUri("mock://xyz").build()
 
         (0..5).each {
             def message = Mock(Message.class)
@@ -233,11 +233,10 @@ class MultiMessageTest extends Specification {
 
             messages << [message:message, headers:headers]
         }
+        MockBrokerFactory.messages = messages.collect {it["message"]}
     }
 
     def "Client should set some random id "() {
-        broker.newMessage() >>> messages.collect {it["message"]}
-
         when:
         messages.forEach {
             client.submit(TestingTask.class, "doWork", [] as Object[])

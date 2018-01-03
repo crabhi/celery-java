@@ -4,68 +4,95 @@ package org.sedlakovi.celery;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Joiner;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.base.Suppliers;
+import lombok.Builder;
+import lombok.extern.java.Log;
+import org.sedlakovi.celery.backends.CeleryBackends;
+import org.sedlakovi.celery.brokers.CeleryBrokers;
 import org.sedlakovi.celery.spi.Backend;
 import org.sedlakovi.celery.spi.Broker;
 import org.sedlakovi.celery.spi.Message;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.*;
+import java.net.UnknownHostException;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 /**
  * A client allowing you to submit a task and get a {@link Future} describing the result.
  */
+@Log
 public class Celery {
-    private final String clientId;
-    private final String clientName;
-    private final ObjectMapper jsonMapper;
-    private final Broker broker;
+    private final String clientId = UUID.randomUUID().toString();
+    private final String clientName = clientId + "@" + getLocalHostName();
+    private final ObjectMapper jsonMapper = new ObjectMapper();
     private final String queue;
-    private final Optional<Backend.ResultsProvider> resultsProvider;
 
-    public Celery(Broker broker, String queue) throws IOException {
-        this(broker, queue, null);
-    }
-
-    /**
-     * Creates Celery client pushing tasks to the default queue - "celery".
-     *
-     */
-    public Celery(Broker broker, Backend backend) throws IOException {
-        this(broker, "celery", backend);
-    }
+    // Memoized suppliers help us to deal with a connection that can't be established yet. It may fail several times
+    // with an exception but when it succeeds, it then always returns the same instance.
+    //
+    // This is tailored for the RabbitMQ connections - they fail to be created if the host can't be reached but they
+    // can heal automatically. If other brokers/backends don't work this way, we might need to rework it.
+    private final Supplier<Optional<Backend.ResultsProvider>> resultsProvider;
+    private final Supplier<Broker> broker;
 
     /**
      * Create a Celery client that can submit tasks and get the results from the backend.
      *
-     * @param broker for dispatching messages
-     * @param backend task backend
+     * @param brokerUri connection to broker that will dispatch messages
+     * @param backendUri connection to backend providing responses
      * @param queue routing tag (specifies into which Rabbit queue the messages will go)
-     * @throws IOException
      */
-    public Celery(Broker broker, String queue, Backend backend) throws IOException {
-        this.broker = broker;
-        this.queue = queue;
-        this.clientId = UUID.randomUUID().toString();
-        this.clientName = clientId + "@" + InetAddress.getLocalHost().getHostName();
-        this.jsonMapper = new ObjectMapper();
+    @Builder
+    private Celery(final String brokerUri,
+                   @Nullable final String queue,
+                   @Nullable final String backendUri,
+                   @Nullable final ExecutorService executor) {
+        this.queue = queue == null ? "celery" : queue;
 
-        if (backend == null) {
-            resultsProvider = Optional.empty();
-        } else {
-            resultsProvider = Optional.of(backend.resultsProviderFor(clientId));
-        }
+        ExecutorService executorService = executor != null ? executor : Executors.newCachedThreadPool();
 
-        broker.declareQueue(queue);
+        broker = Suppliers.memoize(() -> {
+            Broker b = CeleryBrokers.createBroker(brokerUri, executorService);
+            try {
+                b.declareQueue(Celery.this.queue);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return b;
+        });
+
+        resultsProvider = Suppliers.memoize(() -> {
+            if (backendUri == null) {
+                return Optional.empty();
+            }
+
+            Backend.ResultsProvider rp;
+            try {
+                rp = CeleryBackends.create(backendUri, executorService)
+                                   .resultsProviderFor(clientId);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            return Optional.of(rp);
+        });
     }
 
-    public Celery(Broker broker) throws IOException {
-        this(broker, "celery");
+    private String getLocalHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            return  "unknown";
+        }
     }
 
     /**
@@ -77,7 +104,7 @@ public class Celery {
      * @param args positional arguments for the method (need to be JSON serializable)
      * @return asynchronous result
      *
-     * @throws IOException
+     * @throws IOException if the message couldn't be sent
      */
     public AsyncResult<?> submit(Class<?> taskClass, String method, Object[] args) throws IOException {
         return submit(taskClass.getName() + "#" + method, args);
@@ -90,9 +117,16 @@ public class Celery {
      * @param name task name as understood by the worker
      * @param args positional arguments for the method (need to be JSON serializable)
      * @return asynchronous result
-     * @throws IOException
+     *
+     * @throws IOException if the message couldn't be sent
      */
     public AsyncResult<?> submit(String name, Object[] args) throws IOException {
+        // Get the provider early to increase the chance to find out there is a connection problem before actually
+        // sending the message.
+        //
+        // This will help for example in the case when the connection can't be established at all. The connection may
+        // still drop after sending the message but there isn't much we can do about it.
+        Optional<Backend.ResultsProvider> rp = resultsProvider.get();
         String taskId = UUID.randomUUID().toString();
 
         ArrayNode payload = jsonMapper.createArrayNode();
@@ -107,7 +141,7 @@ public class Celery {
                 .putNull("chord")
                 .putNull("errbacks");
 
-        Message message = broker.newMessage();
+        Message message = broker.get().newMessage();
         message.setBody(jsonMapper.writeValueAsBytes(payload));
         message.setContentEncoding("utf-8");
         message.setContentType("application/json");
@@ -117,19 +151,19 @@ public class Celery {
         headers.setTaskName(name);
         headers.setArgsRepr("(" + Joiner.on(", ").join(args) + ")");
         headers.setOrigin(clientName);
-        if (resultsProvider.isPresent()) {
+        if (rp.isPresent()) {
             headers.setReplyTo(clientId);
         }
 
         message.send(queue);
 
         Future<Object> result;
-        if (resultsProvider.isPresent()) {
-            result = resultsProvider.get().getResult(taskId);
+        if (rp.isPresent()) {
+            result = rp.get().getResult(taskId);
         } else {
             result = CompletableFuture.completedFuture(null);
         }
-        return new AsyncResultImpl<Object>(result);
+        return new AsyncResultImpl<>(result);
     }
 
     public interface AsyncResult<T> {

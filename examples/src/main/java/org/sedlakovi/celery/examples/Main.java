@@ -4,9 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import org.sedlakovi.celery.Celery;
-import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
 import org.sedlakovi.celery.CeleryWorker;
-import org.sedlakovi.celery.brokers.rabbit.RabbitBroker;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,9 +19,10 @@ public class Main {
 
         CeleryWorker worker = CeleryWorker.create("celery", connection);
 
-        RabbitBackend backend = new RabbitBackend(connection.createChannel());
-        RabbitBroker broker = new RabbitBroker(connection.createChannel());
-        Celery client = new Celery(broker, backend);
+        Celery client = Celery.builder()
+                .brokerUri("amqp://localhost/%2F")
+                .backendUri("rpc://localhost/%2F")
+                .build();
 
         try {
             for (int i = 0; i < 20; i++) {

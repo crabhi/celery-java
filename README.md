@@ -108,8 +108,10 @@ function.
 2. Call the task by name.
 
 ```java
-RabbitBackend backend = new RabbitBackend(rabbitConnection.createChannel());
-Celery client = new Celery(rabbitConnection.createChannel(), backend);
+Celery client = Celery.builder()
+        .brokerUri("amqp://localhost/%2F")
+        .backendUri("rpc://localhost/%2F")
+        .build();
 
 System.out.println(client.submit("tasks.add", new Object[]{1, 2}).get());
 ```
@@ -123,7 +125,10 @@ now return a `Future<...>` instead of the original type.
 To use the proxy, you need a Celery `Client`.
 
 ```java
-Celery client = new Celery(rabbitConnectionChannel, rabbitBackend);
+Celery client = Celery.builder()
+        .brokerUri("amqp://localhost/%2F")
+        .backendUri("rpc://localhost/%2F")
+        .build();
 
 Integer result = TestTaskProxy.with(client).sum(1, 7).get();
 ```

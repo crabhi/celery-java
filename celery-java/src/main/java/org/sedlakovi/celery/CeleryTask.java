@@ -1,6 +1,9 @@
 package org.sedlakovi.celery;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Marks your code as a Celery CeleryTask.

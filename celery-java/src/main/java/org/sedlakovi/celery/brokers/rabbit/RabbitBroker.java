@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RabbitBroker implements Broker {
+class RabbitBroker implements Broker {
     private final Channel channel;
 
     public RabbitBroker(Channel channel) {

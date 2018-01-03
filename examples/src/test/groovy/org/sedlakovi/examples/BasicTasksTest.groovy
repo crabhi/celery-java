@@ -26,12 +26,8 @@ class BasicTasksTest extends Specification {
     static final int RABBIT_PORT = 5672
     static final int RABBIT_MANAGEMENT_PORT = 15672
 
-    String rabbitUrl(GenericContainer rabbit) {
-        ("amqp://guest:guest@"
-                + rabbit.getContainerIpAddress()
-                + ":"
-                + rabbit.getMappedPort(RABBIT_PORT)
-                + "/%2F")
+    String rabbitUrl(GenericContainer rabbit, String protocol) {
+        return "$protocol://guest:guest@${rabbit.getContainerIpAddress()}:${rabbit.getMappedPort(RABBIT_PORT)}/%2F"
     }
 
     class RabbitWaitStrategy extends GenericContainer.AbstractWaitStrategy {
@@ -39,7 +35,7 @@ class BasicTasksTest extends Specification {
         @Override
         protected void waitUntilReady() {
             def f = new ConnectionFactory()
-            f.uri = rabbitUrl(container)
+            f.uri = rabbitUrl(container, "amqp")
             Unreliables.retryUntilSuccess(startupTimeout.seconds as int, TimeUnit.SECONDS, {
                 f.newConnection(ForkJoinPool.commonPool())
             })
@@ -55,18 +51,10 @@ class BasicTasksTest extends Specification {
     Thread worker
 
     def setup() {
-
-        ConnectionFactory factory = new ConnectionFactory()
-        factory.uri = rabbitUrl(rabbit)
-        factory.sharedExecutor = Executors.newCachedThreadPool()
-
-        Connection connection = factory.newConnection()
-
-        client = new Celery(new RabbitBroker(connection.createChannel()),
-                new RabbitBackend(connection.createChannel()))
+        client = Celery.builder().brokerUri(rabbitUrl(rabbit, "amqp")).backendUri(rabbitUrl(rabbit, "rpc")).build()
 
         worker = Thread.start { it ->
-            CeleryWorker.main(["--broker", rabbitUrl(rabbit)] as String[])
+            CeleryWorker.main(["--broker", rabbitUrl(rabbit, "amqp")] as String[])
         }
     }
 

@@ -151,6 +151,15 @@ based on the example tasks.
 They start the queue in backend automatically via Docker. You need to have Docker configured on the machine running
 the tests of the `examples` module.
 
+## Relase notes
+
+* 1.1 - Lots of breaking changes (renames, API improvements, the Client can be constructed
+  without an existing connection...). If you're already using this library, please get in
+  touch. The next release should have much fewer breaking changes and they will be listed
+  explicitly.
+
+* 1.0 - Initial release. Don't expect it to be stable.
+
 
 [celery-py-start]: http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html
 [celery]: http://www.celeryproject.org/

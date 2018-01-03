@@ -4,41 +4,73 @@ package org.sedlakovi.celery;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Joiner;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.base.Suppliers;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import lombok.Builder;
+import lombok.extern.java.Log;
+import org.sedlakovi.celery.backends.rabbit.RabbitBackend;
+import org.sedlakovi.celery.brokers.rabbit.RabbitBroker;
+import org.sedlakovi.celery.brokers.rabbit.RabbitBrokerFactory;
 import org.sedlakovi.celery.spi.Backend;
 import org.sedlakovi.celery.spi.Broker;
 import org.sedlakovi.celery.spi.Message;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URISyntaxException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 /**
  * A client allowing you to submit a task and get a {@link Future} describing the result.
  */
+@Log
 public class Celery {
-    private final String clientId;
-    private final String clientName;
-    private final ObjectMapper jsonMapper;
-    private final Broker broker;
+    private final String clientId = UUID.randomUUID().toString();
+    private final String clientName = clientId + "@" + InetAddress.getLocalHost().getHostName();
+    private final ObjectMapper jsonMapper = new ObjectMapper();
     private final String queue;
-    private final Optional<Backend.ResultsProvider> resultsProvider;
+    private final SingleItemCache<Optional<Backend.ResultsProvider>> resultsProvider;
+    private final SingleItemCache<Broker> broker;
+    private final ConnectionFactory connectionFactory;
 
-    public Celery(Broker broker, String queue) throws IOException {
-        this(broker, queue, null);
+
+    private static class SingleItemCache<T> {
+        private static final Object KEY = new Object();
+        private final ThrowingSupplier<T> supplier;
+        private final LoadingCache<Object, T> cache = CacheBuilder.newBuilder().build(
+                new CacheLoader<Object, T>() {
+                    @Override
+                    public T load(Object key) throws Exception {
+                        assert key == KEY;
+                        return supplier.get();
+                    }
+                }
+        );
+
+        SingleItemCache(ThrowingSupplier<T> supplier) {
+            this.supplier = supplier;
+        }
+
+        T get() throws Exception {
+            return cache.get(KEY);
+        }
+
+        interface ThrowingSupplier<T> {
+            T get() throws Exception;
+        }
     }
 
-    /**
-     * Creates Celery client pushing tasks to the default queue - "celery".
-     *
-     */
-    public Celery(Broker broker, Backend backend) throws IOException {
-        this(broker, "celery", backend);
-    }
+
 
     /**
      * Create a Celery client that can submit tasks and get the results from the backend.
@@ -48,24 +80,45 @@ public class Celery {
      * @param queue routing tag (specifies into which Rabbit queue the messages will go)
      * @throws IOException
      */
-    public Celery(Broker broker, String queue, Backend backend) throws IOException {
-        this.broker = broker;
-        this.queue = queue;
-        this.clientId = UUID.randomUUID().toString();
-        this.clientName = clientId + "@" + InetAddress.getLocalHost().getHostName();
-        this.jsonMapper = new ObjectMapper();
+    @Builder
+    private Celery(final String brokerUri,
+                   @Nullable final String queue,
+                   @Nullable final String backendUri,
+                   @Nullable final ExecutorService executor) throws IOException, URISyntaxException {
 
-        if (backend == null) {
-            resultsProvider = Optional.empty();
+        this.queue = queue;
+
+        connectionFactory = new ConnectionFactory();
+        if (executor != null) {
+            connectionFactory.setSharedExecutor(executor);
         } else {
-            resultsProvider = Optional.of(backend.resultsProviderFor(clientId));
+            connectionFactory.setSharedExecutor(Executors.newCachedThreadPool());
         }
 
-        broker.declareQueue(queue);
-    }
+        try {
+            connectionFactory.setUri(brokerUri);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IOException(e);
+        } catch (KeyManagementException e) {
+            throw new IOException(e);
+        }
 
-    public Celery(Broker broker) throws IOException {
-        this(broker, "celery");
+        broker = new SingleItemCache<>( () ->
+            new RabbitBrokerFactory().createBroker(
+                    brokerUri,
+                    executor != null ? executor : Executors.newCachedThreadPool()
+            )
+        );
+
+        resultsProvider = new SingleItemCache<>( () -> {
+            if (backendUri == null) {
+                return Optional.empty();
+            }
+
+            backend = new RabbitBackend()
+                resultsProvider = Optional.of(backend.resultsProviderFor(clientId));
+            }
+        });
     }
 
     /**
@@ -95,6 +148,18 @@ public class Celery {
     public AsyncResult<?> submit(String name, Object[] args) throws IOException {
         String taskId = UUID.randomUUID().toString();
 
+        trySend(name, args, taskId);
+
+        Future<Object> result;
+        if (resultsProvider.isPresent()) {
+            result = resultsProvider.get().getResult(taskId);
+        } else {
+            result = CompletableFuture.completedFuture(null);
+        }
+        return new AsyncResultImpl<Object>(result);
+    }
+
+    private void trySend(String name, Object[] args, String taskId) throws IOException {
         ArrayNode payload = jsonMapper.createArrayNode();
         ArrayNode argsArr = payload.addArray();
         for (Object arg : args) {
@@ -107,7 +172,7 @@ public class Celery {
                 .putNull("chord")
                 .putNull("errbacks");
 
-        Message message = broker.newMessage();
+        Message message = broker.get().newMessage();
         message.setBody(jsonMapper.writeValueAsBytes(payload));
         message.setContentEncoding("utf-8");
         message.setContentType("application/json");
@@ -122,14 +187,6 @@ public class Celery {
         }
 
         message.send(queue);
-
-        Future<Object> result;
-        if (resultsProvider.isPresent()) {
-            result = resultsProvider.get().getResult(taskId);
-        } else {
-            result = CompletableFuture.completedFuture(null);
-        }
-        return new AsyncResultImpl<Object>(result);
     }
 
     public interface AsyncResult<T> {

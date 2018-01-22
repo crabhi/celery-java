@@ -20,7 +20,7 @@
         Java library for interfacing with http://celeryproject.org including code for both task submissions and task
         execution.
     </description>
-    <url>https://crabhi.github.io/celery-java/</url>
+    <url>https://bitbucket.org/geneea/celery-java</url>
 
     <licenses>
         <license>
@@ -31,9 +31,9 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/crabhi/celery-java.git</url>
-        <connection>scm:git:git://github.com/crabhi/celery-java.git</connection>
-        <developerConnection>scm:git:git@github.com:crabhi/celery-java.git</developerConnection>
+        <url>https://bitbucket.org/geneea/celery-java</url>
+        <connection>scm:git:git@bitbucket.org:geneea/celery-java.git</connection>
+        <developerConnection>scm:git:git@bitbucket.org:geneea/celery-java.git</developerConnection>
       <tag>HEAD</tag>
   </scm>
 

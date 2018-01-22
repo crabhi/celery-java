@@ -1,7 +1,7 @@
-org.sedlakovi.celery
-org.sedlakovi.celery.annotationprocessor
-org.sedlakovi.celery.backends
-org.sedlakovi.celery.backends.rabbit
-org.sedlakovi.celery.brokers
-org.sedlakovi.celery.brokers.rabbit
-org.sedlakovi.celery.spi
+com.geneea.celery
+com.geneea.celery.annotationprocessor
+com.geneea.celery.backends
+com.geneea.celery.backends.rabbit
+com.geneea.celery.brokers
+com.geneea.celery.brokers.rabbit
+com.geneea.celery.spi

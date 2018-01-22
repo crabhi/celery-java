@@ -29,11 +29,11 @@ Patches providing any of these are welcome.
 ## Maven dependency
 
 Releases are available from Maven Central. Latest version: [![Maven
-Central](https://maven-badges.herokuapp.com/maven-central/org.sedlakovi.celery/celery-java/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.sedlakovi.celery%22%20AND%20a%3A%22celery-java%22)
+Central](https://maven-badges.herokuapp.com/maven-central/com.geneea.celery/celery-java/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.geneea.celery%22%20AND%20a%3A%22celery-java%22)
 
 ```xml
 <dependency>
-    <groupId>org.sedlakovi.celery</groupId>
+    <groupId>com.geneea.celery</groupId>
     <artifactId>celery-java</artifactId>
     <version>...</version>
 </dependency>
@@ -61,7 +61,7 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 1. Annotate your class that does something useful as a `@CeleryTask`.
 
     ```java
-    import org.sedlakovi.celery.CeleryTask;
+    import com.geneea.celery.CeleryTask;
 
     @CeleryTask
     public class TestTask {
@@ -76,7 +76,7 @@ Check out generated Javadoc at [http://crabhi.github.io/celery-java/apidocs/](ht
 function.
 
     ```java
-    import org.sedlakovi.celery.CeleryWorker;
+    import com.geneea.celery.CeleryWorker;
 
     public class MyWorker {
         public static void main(String[] args) throws Exception {
@@ -92,11 +92,11 @@ function.
 
     In [2]: app = celery.Celery(broker="amqp://localhost/", backend="rpc://localhost")
 
-    In [3]: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
+    In [3]: app.signature("com.geneea.celery.examples.TestTask#sum", [1, 2]).delay().get()
     Out[3]: 3
 
     In [4]: %%timeit
-       ...: app.signature("org.sedlakovi.celery.examples.TestTask#sum", [1, 2]).delay().get()
+       ...: app.signature("com.geneea.celery.examples.TestTask#sum", [1, 2]).delay().get()
        ...:
     2.1 ms ± 170 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     ```

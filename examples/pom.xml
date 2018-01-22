@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>celery-java-parent</artifactId>
-        <groupId>org.sedlakovi.celery</groupId>
+        <groupId>com.geneea.celery</groupId>
         <version>1.2-SNAPSHOT</version>
         <relativePath>..</relativePath>
     </parent>
@@ -17,7 +17,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <configuration>
-                    <mainClass>org.sedlakovi.celery.examples.Main</mainClass>
+                    <mainClass>com.geneea.celery.examples.Main</mainClass>
                 </configuration>
             </plugin>
 
@@ -42,7 +42,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.sedlakovi.celery</groupId>
+            <groupId>com.geneea.celery</groupId>
             <artifactId>celery-java</artifactId>
             <version>1.2-SNAPSHOT</version>
         </dependency>

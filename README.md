@@ -1,4 +1,5 @@
 # celery-java
+
 Java implementation of [Celery][celery] client and worker. Quoting from the project website:
 
 > Celery is an asynchronous task queue/job queue based on distributed message passing. It is focused on real-time operation, but supports scheduling as well.
@@ -33,7 +34,7 @@ Central](https://maven-badges.herokuapp.com/maven-central/com.geneea.celery/cele
 
 ```xml
 <dependency>
-    <groupId>com.geneea.celery</groupId>
+    <groupId>org.sedlakovi.celery</groupId>
     <artifactId>celery-java</artifactId>
     <version>...</version>
 </dependency>
@@ -153,6 +154,7 @@ the tests of the `examples` module.
 
 ## Relase notes
 
+* 1.2 - Moved the package from `org.sedlakovi` to `com.geneea`. No functionality changes.
 * 1.1 - Lots of breaking changes (renames, API improvements, the Client can be constructed
   without an existing connection...). If you're already using this library, please get in
   touch. The next release should have much fewer breaking changes and they will be listed

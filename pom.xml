@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.geneea.celery</groupId>
+    <groupId>org.sedlakovi.celery</groupId>
     <artifactId>celery-java-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.3-SNAPSHOT</version>
+    <version>1.2-SNAPSHOT</version>
     <modules>
         <module>examples</module>
         <module>celery-java</module>
@@ -20,7 +20,7 @@
         Java library for interfacing with http://celeryproject.org including code for both task submissions and task
         execution.
     </description>
-    <url>https://bitbucket.org/geneea/celery-java</url>
+    <url>https://crabhi.github.io/celery-java/</url>
 
     <licenses>
         <license>
@@ -31,11 +31,11 @@
     </licenses>
 
     <scm>
-        <url>https://bitbucket.org/geneea/celery-java</url>
-        <connection>scm:git:https://bitbucket.org/geneea/celery-java.git</connection>
-        <developerConnection>scm:git:https://bitbucket.org/geneea/celery-java.git</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
+        <url>https://github.com/crabhi/celery-java.git</url>
+        <connection>scm:git:git://github.com/crabhi/celery-java.git</connection>
+        <developerConnection>scm:git:git@github.com:crabhi/celery-java.git</developerConnection>
+      <tag>HEAD</tag>
+  </scm>
 
     <build>
         <plugins>
@@ -64,7 +64,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <keyname>vstejskal@geneea.com</keyname>
+                    <keyname>filip@sedlakovi.org</keyname>
                 </configuration>
             </plugin>
             <plugin>

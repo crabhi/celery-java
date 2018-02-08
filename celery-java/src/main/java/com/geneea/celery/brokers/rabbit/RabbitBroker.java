@@ -57,7 +57,7 @@ class RabbitBroker implements Broker {
         @Override
         public void send(String queue) throws IOException {
             AMQP.BasicProperties messageProperties = props.headers(headers.map).build();
-            channel.basicPublish("", "celery", messageProperties, body);
+            channel.basicPublish("", queue, messageProperties, body);
         }
 
         class RabbitMessageHeaders implements Message.Headers {

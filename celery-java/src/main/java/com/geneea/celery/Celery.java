@@ -155,7 +155,6 @@ public class Celery {
             headers.setReplyTo(clientId);
         }
 
-        System.out.println(queue);
         message.send(queue);
 
         Future<Object> result;

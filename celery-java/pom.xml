@@ -126,7 +126,20 @@
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
                 <version>1.5</version>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-proc:none</arg>
+                    </compilerArgs>
+                    <includes>
+                        <include>com/geneea/celery/annotationprocessor/TaskProcessor.java</include>
+                        <!--include dependencies required for LogMeCustomAnnotationProcessor -->
+                    </includes>
+                </configuration>
                 <executions>
+                    <execution>
+                        <id>default-compile</id>
+
+                    </execution>
                     <execution>
                         <goals>
                             <goal>compile</goal>

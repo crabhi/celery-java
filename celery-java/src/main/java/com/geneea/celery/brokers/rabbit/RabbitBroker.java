@@ -23,16 +23,39 @@ class RabbitBroker implements Broker {
     }
 
     @Override
+    public void declarePriQueue(String name, int maxPriority) throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put("x-max-priority", maxPriority);
+        channel.queueDeclare(name, true, false, false, props);
+    }
+
+    @Override
     public Message newMessage() {
         return new RabbitMessage();
     }
 
+    @Override
+    public Message newMessageWithPriority(int priority) {
+        return new RabbitMessage(priority);
+    }
+
     class RabbitMessage implements Message {
         private byte[] body;
-        private final AMQP.BasicProperties.Builder props = new AMQP.BasicProperties.Builder()
-                .deliveryMode(2)
-                .priority(0);
+        private final AMQP.BasicProperties.Builder props;
+
         private final RabbitMessageHeaders headers = new RabbitMessageHeaders();
+
+        public RabbitMessage(){
+            props = new AMQP.BasicProperties.Builder()
+                    .deliveryMode(2)
+                    .priority(0);
+        }
+
+        public RabbitMessage(int priority){
+            props = new AMQP.BasicProperties.Builder()
+                    .deliveryMode(2)
+                    .priority(priority);
+        }
 
         @Override
         public void setBody(byte[] body) {

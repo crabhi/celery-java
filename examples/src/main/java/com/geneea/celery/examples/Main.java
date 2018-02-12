@@ -21,11 +21,39 @@ public class Main {
 
         Celery client = Celery.builder()
                 .queue("test_idata1")
-                .brokerUri("amqp://guest:123456@10.12.7.203:5672/10.12.7.203")
-                .backendUri("rpc://guest:123456@10.12.7.203:5672/10.12.7.203")
+                .brokerUri("**********")
+                .backendUri("**********")
+                .isPriQueue(true)
+                .maxPriority(10)
                 .build();
         try {
-            client.submit("tasks.add", new Object[]{1, 2});
+            Thread td = new Thread(){
+                public void run() {
+                    try{
+                        for(int i=0 ; i < 10 ; i++){
+                            client.submitWithPri("tasks.add",2, new Object[]{0, 2});
+                        }
+                    }catch (Exception ex){
+
+                    }
+                }
+            };
+
+            Thread td2 = new Thread(){
+                public void run() {
+                    try{
+                        for(int i=0 ; i < 10 ; i++){
+                            client.submitWithPri("tasks.add",8, new Object[]{(i+1)*10, 8});
+                        }
+                    }catch (Exception ex){
+
+                    }
+                }
+            };
+
+            td.start();
+            td2.start();
+
         } finally {
           //  worker.close();
             //worker.join();

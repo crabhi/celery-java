@@ -49,6 +49,7 @@ public class Celery {
      *
      * @param brokerUri connection to broker that will dispatch messages
      * @param backendUri connection to backend providing responses
+     * @param maxPriority the max priority of the queue if any, otherwise set to zero
      * @param queue routing tag (specifies into which Rabbit queue the messages will go)
      */
     @Builder
@@ -56,8 +57,7 @@ public class Celery {
                    @Nullable final String queue,
                    @Nullable final String backendUri,
                    @Nullable final ExecutorService executor,
-                   @Nullable final boolean isPriQueue,
-                   @Nullable final int maxPriority) {
+                   Optional<Integer> maxPriority) {
         this.queue = queue == null ? "celery" : queue;
 
         ExecutorService executorService = executor != null ? executor : Executors.newCachedThreadPool();
@@ -65,8 +65,8 @@ public class Celery {
         broker = Suppliers.memoize(() -> {
             Broker b = CeleryBrokers.createBroker(brokerUri, executorService);
             try {
-                if(isPriQueue  && maxPriority != 0){
-                    b.declarePriQueue(Celery.this.queue, maxPriority);
+                if( maxPriority.isPresent()){
+                    b.declareQueue(Celery.this.queue, maxPriority.get());
                 }
                 else {
                     b.declareQueue(Celery.this.queue);
@@ -130,8 +130,8 @@ public class Celery {
      *
      * @throws IOException if the message couldn't be sent
      */
-    public AsyncResult<?> submitWithPri(Class<?> taskClass, String method, int priority, Object[] args) throws IOException {
-        return submitWithPri(taskClass.getName() + "#" + method, priority, args);
+    public AsyncResult<?> submit(Class<?> taskClass, String method, int priority, Object[] args) throws IOException {
+        return submit(taskClass.getName() + "#" + method, priority, args);
     }
 
     /**
@@ -199,7 +199,7 @@ public class Celery {
      * @return asynchronous result
      * @throws IOException
      */
-    public AsyncResult<?> submitWithPri(String name, int priority, Object[] args) throws IOException {
+    public AsyncResult<?> submit(String name, int priority, Object[] args) throws IOException {
         // Get the provider early to increase the chance to find out there is a connection problem before actually
         // sending the message.
         //
@@ -220,7 +220,7 @@ public class Celery {
                 .putNull("chord")
                 .putNull("errbacks");
 
-        Message message = broker.get().newMessageWithPriority(priority);
+        Message message = broker.get().newMessage(priority);
         message.setBody(jsonMapper.writeValueAsBytes(payload));
         message.setContentEncoding("utf-8");
         message.setContentType("application/json");

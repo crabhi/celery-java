@@ -23,7 +23,7 @@ class RabbitBroker implements Broker {
     }
 
     @Override
-    public void declarePriQueue(String name, int maxPriority) throws IOException {
+    public void declareQueue(String name, int maxPriority) throws IOException {
         Map<String, Object> props = new HashMap<>();
         props.put("x-max-priority", maxPriority);
         channel.queueDeclare(name, true, false, false, props);
@@ -35,7 +35,7 @@ class RabbitBroker implements Broker {
     }
 
     @Override
-    public Message newMessageWithPriority(int priority) {
+    public Message newMessage(int priority) {
         return new RabbitMessage(priority);
     }
 

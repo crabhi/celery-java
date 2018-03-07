@@ -25,7 +25,7 @@ public interface Broker {
      * @param maxPriority the max priority of the queue with priority
      * @throws IOException
      */
-    void declarePriQueue(String name, int maxPriority) throws IOException;
+    void declareQueue(String name, int maxPriority) throws IOException;
 
     /**
      * @return message that can be constructed and later sent
@@ -36,5 +36,5 @@ public interface Broker {
      * @param priority the priority of the message that is executed
      * @return message that can be constructed and later sent
      */
-    Message newMessageWithPriority(int priority);
+    Message newMessage(int priority);
 }

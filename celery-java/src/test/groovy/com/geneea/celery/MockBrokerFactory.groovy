@@ -25,6 +25,18 @@ public class MockBrokerFactory implements BrokerFactory {
 
     @Override
     Broker createBroker(URI uri, ExecutorService executor) throws IOException, TimeoutException {
-        return null;
+        return new Broker() {
+            @Override
+            void declareQueue(String name) throws IOException {
+                queuesDeclared.add(name)
+            }
+
+            @Override
+            Message newMessage() {
+                def message = messages[messageNum % messages.size()]
+                messageNum++
+                return message
+            }
+        }
     }
 }

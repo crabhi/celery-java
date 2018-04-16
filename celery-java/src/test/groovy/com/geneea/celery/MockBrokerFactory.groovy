@@ -31,11 +31,30 @@ public class MockBrokerFactory implements BrokerFactory {
                 queuesDeclared.add(name)
             }
 
+            /**
+             * @param name queue name
+             * @param maxPriority the max priority of the queue with priority
+             * @throws IOException
+             */
+            @Override
+            void declareQueue(String name, int maxPriority) throws IOException {
+
+            }
+
             @Override
             Message newMessage() {
                 def message = messages[messageNum % messages.size()]
                 messageNum++
                 return message
+            }
+
+            /**
+             * @param priority the priority of the message that is executed
+             * @return message that can be constructed and later sent
+             */
+            @Override
+            Message newMessage(int priority) {
+                return null
             }
         }
     }

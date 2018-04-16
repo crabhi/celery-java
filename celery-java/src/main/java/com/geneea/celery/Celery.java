@@ -36,12 +36,12 @@ public class Celery {
     private final ObjectMapper jsonMapper = new ObjectMapper();
     private final String queue;
 
-    // Memoized suppliers help us to deal with a connection that can't be established yet. It may fail several times
+    // Memorized suppliers help us to deal with a connection that can't be established yet. It may fail several times
     // with an exception but when it succeeds, it then always returns the same instance.
     //
     // This is tailored for the RabbitMQ connections - they fail to be created if the host can't be reached but they
     // can heal automatically. If other brokers/backends don't work this way, we might need to rework it.
-    private final Supplier<Optional<Backend.ResultsProvider>> resultsProvider;
+    public final Supplier<Optional<Backend.ResultsProvider>> resultsProvider;
     private final Supplier<Broker> broker;
 
     /**
@@ -187,7 +187,7 @@ public class Celery {
         } else {
             result = CompletableFuture.completedFuture(null);
         }
-        return new AsyncResultImpl<>(result);
+        return new AsyncResultImpl<>(result, taskId);
     }
 
     /**
@@ -242,21 +242,29 @@ public class Celery {
         } else {
             result = CompletableFuture.completedFuture(null);
         }
-        return new AsyncResultImpl<>(result);
+        return new AsyncResultImpl<>(result, taskId);
     }
 
     public interface AsyncResult<T> {
         boolean isDone();
 
         T get() throws ExecutionException, InterruptedException;
+
+        String getTaskId();
     }
 
     private class AsyncResultImpl<T> implements AsyncResult<T> {
 
         private final Future<T> future;
+        private String taskId;
 
         AsyncResultImpl(Future<T> future) {
             this.future = future;
+        }
+
+        AsyncResultImpl(Future<T> future, String taskId) {
+            this.future = future;
+            this.taskId = taskId;
         }
 
         @Override
@@ -267,6 +275,14 @@ public class Celery {
         @Override
         public T get() throws ExecutionException, InterruptedException {
             return future.get();
+        }
+
+        public String getTaskId(){
+            if(taskId != null) {
+                return taskId;
+            }else {
+                return "";
+            }
         }
     }
 }

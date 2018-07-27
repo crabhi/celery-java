@@ -3,8 +3,13 @@ package com.geneea.celery;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.geneea.celery.backends.rabbit.RabbitResultConsumer;
+import com.geneea.celery.brokers.rabbit.RabbitBroker;
 import com.google.common.base.Joiner;
 import com.google.common.base.Suppliers;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import lombok.Builder;
 import lombok.extern.java.Log;
 import com.geneea.celery.backends.CeleryBackends;
@@ -103,6 +108,30 @@ public class Celery {
         }
     }
 
+
+    public Connection getBrokerConnection(){
+        try{
+            RabbitBroker b = (RabbitBroker)broker.get();
+            Connection con = b.getChannel().getConnection();
+            return con;
+        }catch (Exception ex){
+            System.out.println(String.format("Can not get celery broker connection with ex:%s", ex.toString()));
+            return null;
+        }
+    }
+
+    public Connection getBackendConnection(){
+        try{
+            RabbitResultConsumer df = (RabbitResultConsumer)resultsProvider.get().get() ;
+
+            Connection conn = df.getChannel().getConnection();
+            return conn;
+        }catch (Exception ex){
+            System.out.println(String.format("Can not get celery backend connection with ex:%s", ex.toString()));
+            return null;
+        }
+    }
+
     /**
      * Submit a Java task for processing. You'll probably not need to call this method. rather use @{@link CeleryTask}
      * annotation.
@@ -166,6 +195,7 @@ public class Celery {
                 .putNull("errbacks");
 
         Message message = broker.get().newMessage();
+
         message.setBody(jsonMapper.writeValueAsBytes(payload));
         message.setContentEncoding("utf-8");
         message.setContentType("application/json");

@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-class RabbitBroker implements Broker {
+public class RabbitBroker implements Broker {
     private final Channel channel;
 
     public RabbitBroker(Channel channel) {
@@ -32,6 +32,10 @@ class RabbitBroker implements Broker {
     @Override
     public Message newMessage() {
         return new RabbitMessage();
+    }
+
+    public Channel getChannel() {
+        return channel;
     }
 
     @Override

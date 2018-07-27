@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.ResultsProvider {
+public class RabbitResultConsumer extends DefaultConsumer implements RabbitBackend.ResultsProvider {
 
     private final LoadingCache<String, SettableFuture<Object>> tasks =
             CacheBuilder

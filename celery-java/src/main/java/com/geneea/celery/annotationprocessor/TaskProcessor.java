@@ -45,7 +45,7 @@ public class TaskProcessor extends AbstractProcessor {
 
     public TaskProcessor() {
         Properties props = new Properties();
-        URL url = TaskProcessor.class.getClassLoader().getResource("velocity.properties");
+        URL url = TaskProcessor.class.getClassLoader().getResource("velocity properties");
         try {
             props.load(url.openStream());
         } catch (IOException e) {

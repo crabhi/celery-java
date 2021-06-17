@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-class RabbitBroker implements Broker {
+public class RabbitBroker implements Broker {
     private final Channel channel;
 
     public RabbitBroker(Channel channel) {
@@ -23,16 +23,43 @@ class RabbitBroker implements Broker {
     }
 
     @Override
+    public void declareQueue(String name, int maxPriority) throws IOException {
+        Map<String, Object> props = new HashMap<>();
+        props.put("x-max-priority", maxPriority);
+        channel.queueDeclare(name, true, false, false, props);
+    }
+
+    @Override
     public Message newMessage() {
         return new RabbitMessage();
     }
 
+    public Channel getChannel() {
+        return channel;
+    }
+
+    @Override
+    public Message newMessage(int priority) {
+        return new RabbitMessage(priority);
+    }
+
     class RabbitMessage implements Message {
         private byte[] body;
-        private final AMQP.BasicProperties.Builder props = new AMQP.BasicProperties.Builder()
-                .deliveryMode(2)
-                .priority(0);
+        private final AMQP.BasicProperties.Builder props;
+
         private final RabbitMessageHeaders headers = new RabbitMessageHeaders();
+
+        public RabbitMessage(){
+            props = new AMQP.BasicProperties.Builder()
+                    .deliveryMode(2)
+                    .priority(0);
+        }
+
+        public RabbitMessage(int priority){
+            props = new AMQP.BasicProperties.Builder()
+                    .deliveryMode(2)
+                    .priority(priority);
+        }
 
         @Override
         public void setBody(byte[] body) {

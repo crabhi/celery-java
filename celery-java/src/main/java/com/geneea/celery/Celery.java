@@ -3,8 +3,13 @@ package com.geneea.celery;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.geneea.celery.backends.rabbit.RabbitResultConsumer;
+import com.geneea.celery.brokers.rabbit.RabbitBroker;
 import com.google.common.base.Joiner;
 import com.google.common.base.Suppliers;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import lombok.Builder;
 import lombok.extern.java.Log;
 import com.geneea.celery.backends.CeleryBackends;
@@ -36,12 +41,12 @@ public class Celery {
     private final ObjectMapper jsonMapper = new ObjectMapper();
     private final String queue;
 
-    // Memoized suppliers help us to deal with a connection that can't be established yet. It may fail several times
+    // Memorized suppliers help us to deal with a connection that can't be established yet. It may fail several times
     // with an exception but when it succeeds, it then always returns the same instance.
     //
     // This is tailored for the RabbitMQ connections - they fail to be created if the host can't be reached but they
     // can heal automatically. If other brokers/backends don't work this way, we might need to rework it.
-    private final Supplier<Optional<Backend.ResultsProvider>> resultsProvider;
+    public final Supplier<Optional<Backend.ResultsProvider>> resultsProvider;
     private final Supplier<Broker> broker;
 
     /**
@@ -49,13 +54,15 @@ public class Celery {
      *
      * @param brokerUri connection to broker that will dispatch messages
      * @param backendUri connection to backend providing responses
+     * @param maxPriority the max priority of the queue if any, otherwise set to zero
      * @param queue routing tag (specifies into which Rabbit queue the messages will go)
      */
     @Builder
     private Celery(final String brokerUri,
                    @Nullable final String queue,
                    @Nullable final String backendUri,
-                   @Nullable final ExecutorService executor) {
+                   @Nullable final ExecutorService executor,
+                   Optional<Integer> maxPriority) {
         this.queue = queue == null ? "celery" : queue;
 
         ExecutorService executorService = executor != null ? executor : Executors.newCachedThreadPool();
@@ -63,7 +70,13 @@ public class Celery {
         broker = Suppliers.memoize(() -> {
             Broker b = CeleryBrokers.createBroker(brokerUri, executorService);
             try {
-                b.declareQueue(Celery.this.queue);
+                if( maxPriority.isPresent()){
+                    b.declareQueue(Celery.this.queue, maxPriority.get());
+                }
+                else {
+                    b.declareQueue(Celery.this.queue);
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -95,6 +108,30 @@ public class Celery {
         }
     }
 
+
+    public Connection getBrokerConnection(){
+        try{
+            RabbitBroker b = (RabbitBroker)broker.get();
+            Connection con = b.getChannel().getConnection();
+            return con;
+        }catch (Exception ex){
+            System.out.println(String.format("Can not get celery broker connection with ex:%s", ex.toString()));
+            return null;
+        }
+    }
+
+    public Connection getBackendConnection(){
+        try{
+            RabbitResultConsumer df = (RabbitResultConsumer)resultsProvider.get().get() ;
+
+            Connection conn = df.getChannel().getConnection();
+            return conn;
+        }catch (Exception ex){
+            System.out.println(String.format("Can not get celery backend connection with ex:%s", ex.toString()));
+            return null;
+        }
+    }
+
     /**
      * Submit a Java task for processing. You'll probably not need to call this method. rather use @{@link CeleryTask}
      * annotation.
@@ -108,6 +145,22 @@ public class Celery {
      */
     public AsyncResult<?> submit(Class<?> taskClass, String method, Object[] args) throws IOException {
         return submit(taskClass.getName() + "#" + method, args);
+    }
+
+    /**
+     * Submit a Java task for processing with priority. You'll probably not need to call this method. rather use @{@link CeleryTask}
+     * annotation.
+     *
+     * @param taskClass task implementing class
+     * @param method method in {@code taskClass} that does the work
+     * @param priority the priority of the task
+     * @param args positional arguments for the method (need to be JSON serializable)
+     * @return asynchronous result
+     *
+     * @throws IOException if the message couldn't be sent
+     */
+    public AsyncResult<?> submit(Class<?> taskClass, String method, int priority, Object[] args) throws IOException {
+        return submit(taskClass.getName() + "#" + method, priority, args);
     }
 
     /**
@@ -142,6 +195,7 @@ public class Celery {
                 .putNull("errbacks");
 
         Message message = broker.get().newMessage();
+
         message.setBody(jsonMapper.writeValueAsBytes(payload));
         message.setContentEncoding("utf-8");
         message.setContentType("application/json");
@@ -163,21 +217,84 @@ public class Celery {
         } else {
             result = CompletableFuture.completedFuture(null);
         }
-        return new AsyncResultImpl<>(result);
+        return new AsyncResultImpl<>(result, taskId);
+    }
+
+    /**
+     * Submit a task by name with priority.
+     *
+     * @param name task name as understood by the worker
+     * @param priority the priority of the message
+     * @param args positional arguments for the method (need to be JSON serializable)
+     * @return asynchronous result
+     * @throws IOException
+     */
+    public AsyncResult<?> submit(String name, int priority, Object[] args) throws IOException {
+        // Get the provider early to increase the chance to find out there is a connection problem before actually
+        // sending the message.
+        //
+        // This will help for example in the case when the connection can't be established at all. The connection may
+        // still drop after sending the message but there isn't much we can do about it.
+        Optional<Backend.ResultsProvider> rp = resultsProvider.get();
+        String taskId = UUID.randomUUID().toString();
+
+        ArrayNode payload = jsonMapper.createArrayNode();
+        ArrayNode argsArr = payload.addArray();
+        for (Object arg : args) {
+            argsArr.addPOJO(arg);
+        }
+        payload.addObject();
+        payload.addObject()
+                .putNull("callbacks")
+                .putNull("chain")
+                .putNull("chord")
+                .putNull("errbacks");
+
+        Message message = broker.get().newMessage(priority);
+        message.setBody(jsonMapper.writeValueAsBytes(payload));
+        message.setContentEncoding("utf-8");
+        message.setContentType("application/json");
+
+        Message.Headers headers = message.getHeaders();
+        headers.setId(taskId);
+        headers.setTaskName(name);
+        headers.setArgsRepr("(" + Joiner.on(", ").join(args) + ")");
+        headers.setOrigin(clientName);
+        if (rp.isPresent()) {
+            headers.setReplyTo(clientId);
+        }
+
+        message.send(queue);
+
+        Future<Object> result;
+        if (rp.isPresent()) {
+            result = rp.get().getResult(taskId);
+        } else {
+            result = CompletableFuture.completedFuture(null);
+        }
+        return new AsyncResultImpl<>(result, taskId);
     }
 
     public interface AsyncResult<T> {
         boolean isDone();
 
         T get() throws ExecutionException, InterruptedException;
+
+        String getTaskId();
     }
 
     private class AsyncResultImpl<T> implements AsyncResult<T> {
 
         private final Future<T> future;
+        private String taskId;
 
         AsyncResultImpl(Future<T> future) {
             this.future = future;
+        }
+
+        AsyncResultImpl(Future<T> future, String taskId) {
+            this.future = future;
+            this.taskId = taskId;
         }
 
         @Override
@@ -188,6 +305,14 @@ public class Celery {
         @Override
         public T get() throws ExecutionException, InterruptedException {
             return future.get();
+        }
+
+        public String getTaskId(){
+            if(taskId != null) {
+                return taskId;
+            }else {
+                return "";
+            }
         }
     }
 }
